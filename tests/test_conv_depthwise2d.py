@@ -102,7 +102,8 @@ def test_conv_depthwise2d(
     assert res_out.device == expected_device
     assert res_out.dtype == dtype
     assert res_out.shape == ref_out.shape
-    utils.gems_assert_close(res_out, ref_out, dtype)
+    comparison = res_out.cpu() if ref_out.device.type == "cpu" else res_out
+    utils.gems_assert_close(comparison, ref_out, dtype)
 
 
 @pytest.mark.conv_depthwise2d
@@ -122,9 +123,10 @@ def test_conv_depthwise2d_noncontiguous(dtype):
         inp, weight, [3, 3], None, [2, 2], [1, 1], [1, 1]
     )
     assert result.device == expected_device
-    utils.gems_assert_close(result, ref, dtype, reduce_dim=9)
     assert result.shape == ref.shape
     assert result.dtype == dtype
+    comparison = result.cpu() if ref.device.type == "cpu" else result
+    utils.gems_assert_close(comparison, ref, dtype, reduce_dim=9)
 
 
 @pytest.mark.conv_depthwise2d
