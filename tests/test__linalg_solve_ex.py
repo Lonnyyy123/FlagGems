@@ -77,9 +77,13 @@ def _conditioned_pair(dtype, shape, value_range, left=True):
     sign = torch.sign(diag.real if dtype.is_complex else diag)
     sign = torch.where(sign == 0, torch.ones_like(sign), sign)
     conditioned = a / scale
-    torch.diagonal(conditioned, dim1=-2, dim2=-1).copy_(
-        sign * (high * 0.5) * (1.0 + magnitude * 0.5)
-    )
+    diagonal_values = sign * (high * 0.5) * (1.0 + magnitude * 0.5)
+    if flag_gems.vendor_name == "enflame" and dtype.is_complex:
+        # GCU aborts in implicit real-to-complex copy conversion. Keep the
+        # original values, explicitly cast on CPU, then copy genuine same-dtype
+        # target Complex tensors; do not replace target storage or the solver.
+        diagonal_values = diagonal_values.cpu().to(dtype).to(a.device)
+    torch.diagonal(conditioned, dim1=-2, dim2=-1).copy_(diagonal_values)
     return conditioned, b / scale
 
 
