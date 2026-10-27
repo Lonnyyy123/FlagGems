@@ -154,6 +154,17 @@ def test_fake_quantize_learnable_per_channel_affine_backward_empty():
     self_t = torch.empty(shape, device=flag_gems.device)
     scale = torch.empty(0, device=flag_gems.device)
     zero_point = torch.empty(0, device=flag_gems.device)
+    # Probe only the reference's zero-channel limitation before candidate entry.
+    # Both native CPU and device implementations reject this exact empty case.
+    try:
+        _ATEN_OP(
+            *(_reference(tensor) for tensor in (grad, self_t, scale, zero_point)),
+            axis, -128, 127, 1.0,
+        )
+    except RuntimeError as error:
+        if "input.numel() == 0" not in str(error):
+            raise
+        pytest.skip("Native per-channel backward does not support zero-channel input")
     expected_shapes = (tuple(shape), (0,), (0,))
     expected_device = grad.device
     expected_scale = utils.to_reference(torch.zeros_like(scale), False)
