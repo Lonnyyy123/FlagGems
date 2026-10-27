@@ -17,6 +17,8 @@ import math
 import pytest
 import torch
 
+import flag_gems
+
 from . import base, consts
 from .generated_operator_utils import OperatorBenchmark
 
@@ -38,15 +40,17 @@ def _case_fn(shape, dtype):
 
 
 def _build_inputs_fn(plan, dtype, device):
+    if flag_gems.vendor_name == "nvidia" and dtype == torch.bfloat16:
+        pytest.skip("Native cuDNN batch norm backward does not support BFloat16")
     (shape,) = plan.builder_args
     torch.manual_seed(0)
     channels = shape[1]
     inp = torch.randn(shape, dtype=dtype, device=device)
     grad = torch.randn(shape, dtype=dtype, device=device)
-    weight = torch.ones(channels, dtype=dtype, device=device)
-    save_mean = torch.randn(channels, dtype=dtype, device=device)
-    save_var = torch.rand(channels, dtype=dtype, device=device) + 0.1
-    reserve = torch.empty((0,), dtype=dtype, device=device)
+    weight = torch.ones(channels, dtype=torch.float32, device=device)
+    save_mean = torch.randn(channels, dtype=torch.float32, device=device)
+    save_var = torch.rand(channels, dtype=torch.float32, device=device) + 0.1
+    reserve = torch.empty((0,), dtype=torch.uint8, device=device)
     return inp, grad, weight, None, None, save_mean, save_var, 1e-5, reserve
 
 
