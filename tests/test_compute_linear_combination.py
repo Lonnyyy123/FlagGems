@@ -54,7 +54,8 @@ def test_compute_linear_combination(m, n, k, dtype):
     ref_coefficients = utils.to_reference(coefficients, True)
 
     reference = torch._compute_linear_combination(ref_inp, ref_coefficients)
-    result = flag_gems._compute_linear_combination(inp, coefficients)
+    with flag_gems.use_gems():
+        result = torch._compute_linear_combination(inp, coefficients)
 
     assert result.shape == (m, k)
     assert result.dtype == dtype
@@ -75,7 +76,8 @@ def test_compute_linear_combination_higher_rank(m, n, a, b, dtype):
     ref_coefficients = utils.to_reference(coefficients, True)
 
     reference = torch._compute_linear_combination(ref_inp, ref_coefficients)
-    result = flag_gems._compute_linear_combination(inp, coefficients)
+    with flag_gems.use_gems():
+        result = torch._compute_linear_combination(inp, coefficients)
 
     assert result.shape == (m, a, b)
     utils.gems_assert_close(result, reference, dtype, reduce_dim=n)
@@ -95,7 +97,8 @@ def test_compute_linear_combination_noncontiguous(dtype):
     ref_coefficients = utils.to_reference(coefficients, True)
 
     reference = torch._compute_linear_combination(ref_inp, ref_coefficients)
-    result = flag_gems._compute_linear_combination(inp, coefficients)
+    with flag_gems.use_gems():
+        result = torch._compute_linear_combination(inp, coefficients)
 
     utils.gems_assert_close(result, reference, dtype, reduce_dim=n)
 
@@ -111,7 +114,8 @@ def test_compute_linear_combination_zeros(m, n, k, dtype):
     ref_coefficients = utils.to_reference(coefficients, True)
 
     reference = torch._compute_linear_combination(ref_inp, ref_coefficients)
-    result = flag_gems._compute_linear_combination(inp, coefficients)
+    with flag_gems.use_gems():
+        result = torch._compute_linear_combination(inp, coefficients)
 
     utils.gems_assert_close(result, reference, dtype, reduce_dim=n)
 
@@ -133,5 +137,5 @@ def test_compute_linear_combination_invalid_shapes(input_shape, coefficient_shap
         coefficient_shape, dtype=torch.float32, device=flag_gems.device
     )
 
-    with pytest.raises((AssertionError, RuntimeError)):
-        flag_gems._compute_linear_combination(inp, coefficients)
+    with flag_gems.use_gems(), pytest.raises((AssertionError, RuntimeError)):
+        torch._compute_linear_combination(inp, coefficients)
