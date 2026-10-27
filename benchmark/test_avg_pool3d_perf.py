@@ -121,6 +121,7 @@ def test_perf_avg_pool3d():
 class AvgPool3dBackwardBenchmark(AvgPool3dBenchmark):
     def build_inputs(self, case):
         inp, kwargs = super().build_inputs(case)
+        inp = inp.clone().requires_grad_(True)
         def triple(value):
             return (value,) * 3 if isinstance(value, int) else tuple(value)
         kernel = triple(kwargs["kernel_size"])
