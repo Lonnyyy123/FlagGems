@@ -195,7 +195,7 @@ def test_fake_quantize_learnable_per_channel_affine_backward_rejects_dtype():
         torch.zeros(8, device=flag_gems.device),
     ]
     with pytest.raises(
-        (AssertionError, RuntimeError), match=r"grad.*float32|dY\.scalar_type"
+        (AssertionError, RuntimeError), match=r"grad.*float32|dY_?\.scalar_type"
     ):
         flag_gems._fake_quantize_learnable_per_channel_affine_backward(
             *tensors, axis, -128, 127, 1.0
