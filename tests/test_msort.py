@@ -66,8 +66,10 @@ def _seed_random_inputs():
 def test_msort_preserves_nan_payloads(rows, dtype, int_dtype, bits):
     factory_device = (
         "cpu"
-        if flag_gems.vendor_name == "enflame"
-        or (flag_gems.vendor_name in ("kunlunxin", "iluvatar") and dtype == torch.float64)
+        if (
+            flag_gems.vendor_name in ("kunlunxin", "iluvatar", "enflame")
+            and dtype == torch.float64
+        )
         else flag_gems.device
     )
     inp = torch.randn(rows, 3, dtype=dtype, device=factory_device)
