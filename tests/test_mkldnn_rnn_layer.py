@@ -284,14 +284,15 @@ def test_mkldnn_rnn_layer_direct_backward(request):
     assert cy_g.shape == cx_g.shape
     (out_g.sum() + hy_g.sum() + cy_g.sum()).backward()
 
-    # Side 2: native PyTorch LSTM recompute (same as backward internals)
-    inp_r = utils.to_reference(inp_data).detach().clone().requires_grad_(True)
-    hx_r = utils.to_reference(hx_data).detach().clone().requires_grad_(True)
-    cx_r = utils.to_reference(cx_data).detach().clone().requires_grad_(True)
-    wih_r = utils.to_reference(w_ih_d).detach().clone().requires_grad_(True)
-    whh_r = utils.to_reference(w_hh_d).detach().clone().requires_grad_(True)
-    bih_r = utils.to_reference(b_ih_d).detach().clone().requires_grad_(True)
-    bhh_r = utils.to_reference(b_hh_d).detach().clone().requires_grad_(True)
+    # Side 2: high-precision native recomputation. FP32 GPU matmul rounding
+    # can otherwise dominate the strict gradient comparison on CUDA.
+    inp_r = utils.to_reference(inp_data, True).detach().clone().requires_grad_(True)
+    hx_r = utils.to_reference(hx_data, True).detach().clone().requires_grad_(True)
+    cx_r = utils.to_reference(cx_data, True).detach().clone().requires_grad_(True)
+    wih_r = utils.to_reference(w_ih_d, True).detach().clone().requires_grad_(True)
+    whh_r = utils.to_reference(w_hh_d, True).detach().clone().requires_grad_(True)
+    bih_r = utils.to_reference(b_ih_d, True).detach().clone().requires_grad_(True)
+    bhh_r = utils.to_reference(b_hh_d, True).detach().clone().requires_grad_(True)
     h = hx_r.clone()
     c = cx_r.clone()
     outputs = []

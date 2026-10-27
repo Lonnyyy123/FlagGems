@@ -46,7 +46,14 @@ class _H800Latency:
                 return {k: value(v) for k, v in x.items()}
             return x
 
-        return dict(inputs=dict(args=value(args), kwargs=value(kwargs)))
+        return dict(
+            inputs=dict(args=value(args), kwargs=value(kwargs)),
+            source_commit="9d57a23b4386bd669152a935fe88a96db907da7c",
+            benchmark="benchmark/test_mkldnn_rnn_layer.py",
+            descriptor=list(args[0].shape),
+            scope="core",
+            variant=_MKLDNN_RNN_LAYER_SHAPES.index(tuple(args[0].shape)),
+        )
 
     @cached_property
     def _h800(self):
