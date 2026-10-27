@@ -120,6 +120,8 @@ def test_perf_avg_pool3d():
 
 class AvgPool3dBackwardBenchmark(AvgPool3dBenchmark):
     def build_inputs(self, case):
+        if base.vendor_name == "enflame" and case.dtype in (torch.float16, torch.bfloat16):
+            pytest.skip(f"Enflame native avg_pool3d_backward does not support {case.dtype}")
         inp, kwargs = super().build_inputs(case)
         inp = inp.clone().requires_grad_(True)
         def triple(value):
