@@ -333,8 +333,9 @@ def test_poisson_nll_loss_complex(dtype, log_input, reduction, case):
         1e-8,
         reduction,
     )
+    expected_device = inp.device
     result = flag_gems.poisson_nll_loss(inp, target, log_input, full, 1e-8, reduction)
-    assert result.device == inp.device
+    assert result.device == expected_device
     assert result.dtype == reference.dtype
     assert result.shape == reference.shape
     if flag_gems.vendor_name in ("ascend", "enflame") or (
