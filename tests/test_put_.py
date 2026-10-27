@@ -385,7 +385,13 @@ def test_put__high_rank(rank, contiguous):
         # A fully reversed permutation is the worst case for dim collapsing:
         # no two dimensions are memory-adjacent, so the rank survives intact.
         inp = inp.permute(*reversed(range(rank)))
-    ref_inp = utils.to_reference(inp.clone(), True)
+    if flag_gems.vendor_name == "enflame" and not contiguous and rank > 8:
+        # Native put_ and target-to-CPU transfer support this input, but the
+        # vendor's target clone/copy kernel rejects a noncontiguous rank nine.
+        # Snapshot only the reference on CPU; keep the actual target view.
+        ref_inp = utils.to_reference(inp.cpu().clone(), True)
+    else:
+        ref_inp = utils.to_reference(inp.clone(), True)
 
     numel = inp.numel()
     count = max(1, numel // 3)
