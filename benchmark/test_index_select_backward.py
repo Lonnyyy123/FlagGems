@@ -15,7 +15,6 @@
 import pytest
 import torch
 
-import flag_gems
 from flag_gems.utils import shape_utils
 
 from . import base, consts
@@ -64,7 +63,6 @@ def test_index_select_backward():
     bench = IndexSelectBackwardBenchmark(
         op_name="index_select_backward",
         torch_op=torch.ops.aten.index_select_backward,
-        gems_op=flag_gems.index_select_backward,
         case_fn=_case_fn,
         build_inputs_fn=_build_inputs_fn,
         dtypes=consts.FLOAT_DTYPES,

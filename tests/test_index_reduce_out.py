@@ -52,16 +52,15 @@ def test_index_reduce_out_resizes(reduce, include_self):
     ref_out = torch.empty_like(utils.to_reference(inp, True))
     _reference(inp, index, source, reduce, include_self, ref_out)
 
-    with flag_gems.use_gems():
-        result = torch.index_reduce(
-            inp,
-            1,
-            index,
-            source,
-            reduce,
-            include_self=include_self,
-            out=out,
-        )
+    result = flag_gems.index_reduce_out(
+        inp,
+        1,
+        index,
+        source,
+        reduce,
+        include_self=include_self,
+        out=out,
+    )
 
     assert result is out
     assert out.shape == inp.shape
@@ -78,10 +77,9 @@ def test_index_reduce_out_preserves_storage(reduce):
     ref_out = torch.empty_like(utils.to_reference(inp, True))
     _reference(inp, index, source, reduce, True, ref_out)
 
-    with flag_gems.use_gems():
-        result = torch.index_reduce(
-            inp, 1, index, source, reduce, include_self=True, out=out
-        )
+    result = flag_gems.index_reduce_out(
+        inp, 1, index, source, reduce, include_self=True, out=out
+    )
 
     assert result is out
     assert out.data_ptr() == pointer
@@ -101,8 +99,7 @@ def test_index_reduce_out_aliases_input():
         out=ref_inp,
     )
 
-    with flag_gems.use_gems():
-        result = torch.index_reduce(inp, 1, index, source, "mean", out=inp)
+    result = flag_gems.index_reduce_out(inp, 1, index, source, "mean", out=inp)
 
     assert result is inp
     utils.gems_assert_close(inp, ref_inp, dtype=inp.dtype, reduce_dim=source.size(1))
@@ -116,7 +113,10 @@ def test_index_reduce_out_rejects_unsafe_dtype():
     )
     snapshot = out.clone()
 
-    with flag_gems.use_gems(), pytest.raises(RuntimeError):
-        torch.index_reduce(inp, 1, index, source, "mean", out=out)
+    with pytest.raises(RuntimeError):
+        flag_gems.index_reduce_out(inp, 1, index, source, "mean", out=out)
 
-    utils.gems_assert_equal(out, snapshot)
+    assert out.device == snapshot.device
+    assert out.dtype == snapshot.dtype
+    assert out.shape == snapshot.shape
+    utils.gems_assert_equal(out, utils.to_reference(snapshot))
