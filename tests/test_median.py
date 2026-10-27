@@ -62,7 +62,7 @@ def _make_input(shape, dtype):
             return torch.empty(shape, dtype=dtype, device=flag_gems.device)
         vals = torch.arange(numel, device=_median_index_device(), dtype=torch.int64)
         vals = (vals * 37) % numel - numel // 2
-        return vals.reshape(shape).to(device=flag_gems.device, dtype=dtype)
+        return vals.reshape(shape).to(dtype).to(flag_gems.device)
     return torch.randn(shape, dtype=dtype, device=flag_gems.device)
 
 
@@ -848,7 +848,7 @@ def test_median_extended_lastdim_width(dtype):
     width = 8193
     vals = torch.arange(2 * width, dtype=torch.int64, device=_median_index_device())
     vals = ((vals * 9973) % (3 * width)) - width
-    inp = vals.reshape(2, width).to(device=flag_gems.device, dtype=dtype)
+    inp = vals.reshape(2, width).to(dtype).to(flag_gems.device)
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
@@ -920,7 +920,7 @@ def test_median_lastdim_sort_1536_unique_exact_index(dtype, keepdim):
 def test_median_fp32_key_select_boundaries(width):
     vals = torch.arange(4 * width, dtype=torch.int64, device=_median_index_device())
     vals = ((vals * 7919) % (3 * width)) - width
-    inp = vals.reshape(4, width).to(device=flag_gems.device, dtype=torch.float32)
+    inp = vals.reshape(4, width).to(torch.float32).to(flag_gems.device)
     inp[0, 0] = float("-inf")
     inp[0, width - 1] = float("inf")
     ref_inp = utils.to_reference(inp)
@@ -1050,7 +1050,7 @@ def test_median_fp32_key_select_signed_zero_bits(width):
 def test_median_f16_key_select_boundaries(dtype, width):
     vals = torch.arange(4 * width, dtype=torch.int64, device=_median_index_device())
     vals = ((vals * 6151) % (3 * width)) - width
-    inp = vals.reshape(4, width).to(device=flag_gems.device, dtype=dtype)
+    inp = vals.reshape(4, width).to(dtype).to(flag_gems.device)
     inp[0, 0] = float("-inf")
     inp[0, width - 1] = float("inf")
     ref_inp = utils.to_reference(inp)
@@ -1130,7 +1130,7 @@ def test_median_f16_key_select_width640_keepdim(dtype, keepdim):
     width = 640
     vals = torch.arange(5 * width, dtype=torch.int64, device=_median_index_device())
     vals = ((vals * 3203) % (4 * width)) - 2 * width
-    inp = vals.reshape(5, width).to(device=flag_gems.device, dtype=dtype)
+    inp = vals.reshape(5, width).to(dtype).to(flag_gems.device)
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=-1, keepdim=keepdim)
@@ -1318,7 +1318,7 @@ def test_median_strided_nonlast_large_reduction_semantics(dtype, keepdim):
     rank = (width - 1) // 2
     vals = torch.arange(3 * width * 5, dtype=torch.int64, device=_median_index_device())
     vals = ((vals * 37) % (5 * width)) - 2 * width
-    inp = vals.reshape(3, width, 5).to(device=flag_gems.device, dtype=dtype)
+    inp = vals.reshape(3, width, 5).to(dtype).to(flag_gems.device)
 
     if dtype.is_floating_point:
         inp[0, 0, 0] = float("nan")
@@ -1431,7 +1431,7 @@ def test_median_large_width_duplicate_indices_select_value(dtype):
     midpoint = width // 2
     row = torch.arange(width, dtype=torch.int64, device=_median_index_device())
     row[midpoint + 1] = midpoint
-    inp = torch.stack((row, row.flip(0))).to(device=flag_gems.device, dtype=dtype)
+    inp = torch.stack((row, row.flip(0))).to(dtype).to(flag_gems.device)
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
@@ -1448,7 +1448,7 @@ def test_median_large_width_duplicate_indices_select_value(dtype):
 def test_median_int_lastdim_select_boundaries(dtype, width):
     vals = torch.arange(4 * width, dtype=torch.int64, device=_median_index_device())
     vals = ((vals * 9973) % (3 * width)) - width
-    inp = vals.reshape(4, width).to(device=flag_gems.device, dtype=dtype)
+    inp = vals.reshape(4, width).to(dtype).to(flag_gems.device)
     info = torch.iinfo(dtype)
     inp[0, 0] = info.min
     inp[0, width - 1] = info.max

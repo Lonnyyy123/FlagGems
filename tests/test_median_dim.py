@@ -32,7 +32,7 @@ def _unique_input(shape, dim, dtype):
         # constructing its int64 indices with the CPU oracle.
         base = torch.arange(torch.Size(shape).numel(), dtype=torch.int64).reshape(shape)
         order = torch.argsort(torch.rand(shape, device=flag_gems.device).cpu(), dim=dim)
-        return torch.gather(base, dim, order).to(device=flag_gems.device, dtype=dtype)
+        return torch.gather(base, dim, order).to(dtype).to(flag_gems.device)
     base = torch.arange(
         torch.Size(shape).numel(), device=flag_gems.device, dtype=torch.int64
     ).reshape(shape)
