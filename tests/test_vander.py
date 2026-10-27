@@ -57,8 +57,10 @@ def _vander_reference_input(value, upcast=False):
 
 def _vander_reference(value, N=None, increasing=False):
     if flag_gems.vendor_name == "enflame" and value.device.type != "cpu":
-        if value.dtype in (torch.int16, torch.bool):
-            pytest.skip("Enflame native vander reference computes incorrect narrow/bool values")
+        if value.dtype in (torch.int16, torch.int32, torch.int64, torch.bool):
+            pytest.skip(
+                "Enflame native vander promotes integer/Bool to unsupported Long cumprod; CPU reference remains covered"
+            )
         if value.dtype == torch.float32 and not value.is_contiguous():
             pytest.skip("Enflame native vander reference misreads strided Float32 input")
     if flag_gems.vendor_name == "kunlunxin" and value.device.type != "cpu":
