@@ -130,9 +130,21 @@ def test_compute_linear_combination_out_rejects_dtype_mismatch():
     torch.manual_seed(0)
     inp = torch.randn((4, 5), dtype=torch.float32, device=flag_gems.device)
     coefficients = torch.randn((3, 4), dtype=torch.float32, device=flag_gems.device)
-    out = torch.empty((3, 5), dtype=torch.int32, device=flag_gems.device)
+    out = torch.zeros((3, 5), dtype=torch.int32, device=flag_gems.device)
+    ref_inp = utils.to_reference(inp, False)
+    ref_coefficients = utils.to_reference(coefficients, False)
+    ref_out = torch.zeros((3, 5), dtype=torch.int32, device=ref_inp.device)
+    try:
+        reference = _reference_out(ref_inp, ref_coefficients, ref_out)
+    except (RuntimeError, AssertionError):
+        with pytest.raises((RuntimeError, AssertionError)):
+            flag_gems._compute_linear_combination_out(inp, coefficients, out=out)
+        return
 
-    with pytest.raises((RuntimeError, AssertionError)):
-        flag_gems._compute_linear_combination_out(
-            inp, coefficients, out=out
-        )
+    # Some native backends accept an integer output and cast each addition.
+    result = flag_gems._compute_linear_combination_out(inp, coefficients, out=out)
+    assert result is out
+    assert result.device == inp.device
+    assert result.dtype == torch.int32
+    assert result.shape == (3, 5)
+    utils.gems_assert_equal(result, reference)
