@@ -76,7 +76,7 @@ def _to_reference(inp):
 
 def _assert_sgn_equal(result, reference, dtype):
     assert result.dtype == dtype
-    if dtype in utils.COMPLEX_DTYPES:
+    if dtype.is_complex:
         utils.gems_assert_close(result, reference, dtype, equal_nan=True)
     else:
         utils.gems_assert_equal(result, reference.to(dtype), equal_nan=True)
