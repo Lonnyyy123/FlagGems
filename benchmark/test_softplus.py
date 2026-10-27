@@ -46,7 +46,7 @@ def _backward_case_fn(shape, dtype):
 
 def _backward_build_inputs_fn(plan, dtype, device):
     (shape,) = plan.builder_args
-    inp = torch.randn(shape, dtype=dtype, device=device)
+    inp = torch.randn(shape, dtype=dtype, device=device).clone().requires_grad_(True)
     return torch.randn_like(inp), inp, 1.0, 20.0
 
 
