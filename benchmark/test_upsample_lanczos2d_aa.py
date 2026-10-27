@@ -175,7 +175,7 @@ def _build_inputs_fn_vec(plan, dtype, device):
 def _vec_h800_records():
     payload = Path(os.environ["FLAGGEMS_LANCZOS_VEC_H800_BASELINE"]).read_bytes()
     if hashlib.sha256(payload).hexdigest() != (
-        "7efb83703ec03252703e7f79b95e194a03b2c1f608594513fca1540457444990"
+        "be758c4f292c1d8ae7b25789b06d2733f23716fde65e798c80c62bc403d16cfb"
     ):
         raise ValueError("Unexpected Lanczos H800 baseline artifact")
     artifact = json.loads(payload)
