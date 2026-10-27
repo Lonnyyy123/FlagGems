@@ -19,6 +19,7 @@ import flag_gems
 
 from . import base, consts
 from .conftest import Config
+from .test_thnn_fused_lstm_cell_backward import _FusedCellStaticBaseline
 
 CORE_SHAPES = [
     (1, 32, False),
@@ -75,7 +76,7 @@ def _make_workspace(batch_size, hidden_size, dtype, device):
     return _forward_workspace(input_gates, hidden_gates, hx, input_bias, hidden_bias)[1]
 
 
-class FusedGRUCellBackwardBenchmark(base.Benchmark):
+class FusedGRUCellBackwardBenchmark(_FusedCellStaticBaseline, base.Benchmark):
     def set_shapes(self, shape_file_path=None):
         self.shapes = list(CORE_SHAPES)
         if Config.bench_level == consts.BenchLevel.COMPREHENSIVE:

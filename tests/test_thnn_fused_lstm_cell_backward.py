@@ -28,11 +28,6 @@ if cfg.QUICK_MODE:
 GRAD_MODES = [(True, True), (True, False), (False, True), (False, False)]
 
 
-@pytest.mark.thnn_fused_lstm_cell_backward
-@pytest.mark.underscore_thnn_fused_lstm_cell_backward
-@pytest.mark.parametrize(
-    "dtype", [torch.int32, torch.int64, torch.complex64, torch.complex128]
-)
 def lstm_forward(input_gates, hidden_gates, cx, input_bias=None, hidden_bias=None):
     dtype = cx.dtype
     compute = torch.float64 if dtype == torch.float64 else torch.float32
@@ -60,6 +55,11 @@ def _forward_workspace(*args):
     return tuple(value.to(args[0].device) for value in values)
 
 
+@pytest.mark.thnn_fused_lstm_cell_backward
+@pytest.mark.underscore_thnn_fused_lstm_cell_backward
+@pytest.mark.parametrize(
+    "dtype", [torch.int32, torch.int64, torch.complex64, torch.complex128]
+)
 def test_thnn_fused_lstm_cell_backward_rejects_unsupported_dtype(dtype):
     if flag_gems.vendor_name == "kunlunxin":
         if dtype == torch.complex128:
@@ -144,7 +144,7 @@ def lstm_backward(grad_hy, grad_cy, cx, cy, workspace, has_bias, legacy=False):
         .to(dtype)
         .reshape(workspace.shape)
     )
-    prev = (cell * f).to(dtype)
+    prev = (cell * f).to(dtype).contiguous()
     bias = gates.to(compute).sum(0).to(dtype) if has_bias else None
     return (gates, gates, prev, bias, bias) if legacy else (gates, prev, bias)
 
@@ -182,8 +182,8 @@ def _assert_outputs(result, reference, dtype, batch_size):
         assert actual.device == torch.empty(0, device=flag_gems.device).device
         assert actual.is_contiguous()
         utils.gems_assert_close(
-            actual,
-            expected,
+            actual.cpu(),
+            expected.cpu(),
             dtype,
             equal_nan=True,
             reduce_dim=max(batch_size, 1),
@@ -272,8 +272,12 @@ def test_thnn_fused_lstm_cell_backward_end_to_end(dtype, has_bias):
             grad_hy, grad_cy, cx, cy, workspace, has_bias
         )
 
-    utils.gems_assert_close(hy, ref_hy, dtype, reduce_dim=batch_size)
-    utils.gems_assert_close(cy, ref_cy, dtype, reduce_dim=batch_size)
+    utils.gems_assert_close(
+        hy, utils.to_reference(ref_hy), dtype, reduce_dim=batch_size
+    )
+    utils.gems_assert_close(
+        cy, utils.to_reference(ref_cy), dtype, reduce_dim=batch_size
+    )
     _assert_outputs(result, reference, dtype, batch_size)
 
 

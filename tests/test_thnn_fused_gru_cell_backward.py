@@ -88,7 +88,7 @@ def _manual_reference(grad_hy, workspace, has_bias):
     grad_hidden_gates = torch.cat(
         (grad_reset, grad_input_gate, grad_hidden_new), dim=1
     ).to(dtype)
-    grad_hx = grad_hx.to(dtype)
+    grad_hx = grad_hx.to(dtype).contiguous()
     if not has_bias:
         return grad_input_gates, grad_hidden_gates, grad_hx, None, None
     grad_input_bias = grad_input_gates.to(compute_dtype).sum(dim=0).to(dtype)
@@ -125,8 +125,8 @@ def _assert_outputs_close(result, reference, dtype, batch_size, device):
         assert actual.shape == expected.shape
         atol = 2e-3 if dtype == torch.bfloat16 and index >= 3 else base_atol
         utils.gems_assert_close(
-            actual,
-            expected,
+            actual.cpu(),
+            expected.cpu(),
             dtype,
             reduce_dim=max(batch_size, 1) if index >= 3 else 1,
             atol=atol,

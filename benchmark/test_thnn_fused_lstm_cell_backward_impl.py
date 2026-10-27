@@ -8,6 +8,7 @@ import flag_gems
 
 from . import base
 from .generated_operator_utils import OperatorBenchmark
+from .test_thnn_fused_lstm_cell_backward import _FusedCellStaticBaseline
 
 SHAPES = [(1, 4), (4, 16), (16, 64)]
 
@@ -39,7 +40,7 @@ def _forward_workspace(*args):
     return tuple(value.to(args[0].device) for value in values)
 
 
-class LstmCellBackwardBenchmark(OperatorBenchmark):
+class LstmCellBackwardBenchmark(_FusedCellStaticBaseline, OperatorBenchmark):
     def set_shapes(self, shape_file_path=None):
         self.shapes = list(SHAPES)
         self.shape_desc = "batch,hidden"
