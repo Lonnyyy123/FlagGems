@@ -227,11 +227,7 @@ class LdexpBenchmark(base.BinaryPointwiseBenchmark, OperatorBenchmark):
             raise ValueError(
                 "Enflame ldexp requires FLAGGEMS_NV_BASELINE H800 native data"
             )
-        if external and (
-            self.is_backward
-            or base.Config.skip_native
-            or "tflops" in self.to_bench_metrics
-        ):
+        if external and (self.is_backward or base.Config.skip_native):
             raise ValueError(
                 "External H800 data requires forward native/candidate latency mode"
             )
