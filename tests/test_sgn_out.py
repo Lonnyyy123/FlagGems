@@ -106,8 +106,7 @@ def _assert_matches_torch(inp, out=None):
     else:
         ref_out = torch.empty_like(ref_inp)
         torch.sgn(ref_inp, out=ref_out)
-        with flag_gems.use_gems():
-            result = torch.sgn(inp, out=out)
+        result = flag_gems.sgn_out(inp, out=out)
         assert result is out
     _assert_sgn_equal(result, ref_out, inp.dtype)
 
@@ -142,5 +141,5 @@ def test_sgn_out_rejects_mismatched_dtype():
     out = torch.empty_like(inp, dtype=torch.int32)
     with pytest.raises(RuntimeError):
         torch.sgn(utils.to_reference(inp, True), out=out.detach().cpu())
-    with flag_gems.use_gems(), pytest.raises(RuntimeError):
-        torch.sgn(inp, out=out)
+    with pytest.raises(RuntimeError):
+        flag_gems.sgn_out(inp, out=out)
