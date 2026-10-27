@@ -36,8 +36,8 @@ _TEST_DTYPES = (
 
 
 _H800_COLLECTION_SOURCE = "95847c9f7040152cb774fe56183eb280c5764c97"
-_H800_ARTIFACT_SHA256 = "8a97ee0f31d6c60a0b9597394af3465715e3a7fc94aeae5a65e22538f83b8a21"
-_H800_PROVENANCE_SHA256 = "46ade64c01e38972f8e79974f070bcba29ee9588862ac463c6c63f984f6cc267"
+_H800_ARTIFACT_SHA256 = "ca1f3375753e7397acf29b944f85a8443ebb50a1956e924d81f989057f5e5923"
+_H800_PROVENANCE_SHA256 = "bf68536d95d3d96ae1b2da12239d434b756884d3a80bcc60cd19cad1e31c5567"
 
 
 @dataclass
@@ -143,7 +143,17 @@ class LuWithInfoBenchmark(base.Benchmark):
         }
 
     def get_latency(self, op, *args, **kwargs):
-        if flag_gems.vendor_name == "enflame" and op is self.torch_op:
+        external_reference = (
+            flag_gems.vendor_name == "enflame"
+            and op is self.torch_op
+            and (
+                getattr(self, "_native_pending", False)
+                or (getattr(self, "_reference_traversal", False) and base.Config.reference_only)
+            )
+        )
+        if external_reference:
+            # Consume before loading, including failures; candidate identity may alias Torch.
+            self._native_pending = False
             if self.is_backward or base.Config.skip_native or len(args) != 1:
                 raise ValueError("External LU reference requires the original forward ABI")
             value = args[0]
@@ -170,15 +180,43 @@ class LuWithInfoBenchmark(base.Benchmark):
             self._imported_reference = dict(provenance, config=config,
                 target_environment={"vendor": flag_gems.vendor_name,
                                     "device": str(value.device), "torch": str(torch.__version__)})
+            if getattr(self, "_reference_traversal", False):
+                active = [row for row in base.Config.reference_records
+                          if row.get("operator") == self.op_name
+                          and row.get("status") == "FAILED"
+                          and row.get("stage") == "benchmark_reference"]
+                if len(active) != 1:
+                    raise RuntimeError("Cannot identify active LU reference case")
+                active[0]["baseline_source"] = self._imported_reference
             return milliseconds
         return super().get_latency(op, *args, **kwargs)
 
     def _measure_input(self, input, case_id=None):
         self._imported_reference = None
-        metric = super()._measure_input(input, case_id)
-        if self._imported_reference is not None:
-            return _LuMetrics(**asdict(metric), baseline_source=self._imported_reference)
-        return metric
+        self._native_pending = (
+            flag_gems.vendor_name == "enflame"
+            and "latency_base" in self.to_bench_metrics
+            and not base.Config.skip_native
+        )
+        try:
+            metric = super()._measure_input(input, case_id)
+            if self._imported_reference is not None:
+                return _LuMetrics(**asdict(metric), baseline_source=self._imported_reference)
+            return metric
+        finally:
+            self._native_pending = False
+
+    def _run_reference_cases(self, case_ids):
+        first = len(base.Config.reference_records)
+        self._reference_traversal = True
+        try:
+            return super()._run_reference_cases(case_ids)
+        finally:
+            self._reference_traversal = False
+            self._native_pending = False
+            for row in base.Config.reference_records[first:]:
+                if row.get("baseline_source") and row.get("status") == "PASSED":
+                    row["stage"] = "external_baseline"
 
     def set_shapes(self, shape_file_path=None):
         self.shapes = self.DEFAULT_SHAPES
