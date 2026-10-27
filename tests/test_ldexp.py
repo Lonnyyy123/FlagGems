@@ -34,6 +34,16 @@ def _native_reference(inp, exponent):
     return torch.ops.aten.ldexp.Tensor(inp, exponent)
 
 
+def _assert_ldexp_result_abi(result, inp, exponent):
+    expected_dtype = torch.result_type(inp, exponent)
+    if not (expected_dtype.is_floating_point or expected_dtype.is_complex):
+        expected_dtype = torch.get_default_dtype()
+    assert isinstance(result, torch.Tensor)
+    assert result.device == inp.device
+    assert result.dtype == expected_dtype
+    assert result.shape == torch.broadcast_shapes(inp.shape, exponent.shape)
+
+
 @pytest.mark.ldexp
 @pytest.mark.parametrize("shape", [*utils.POINTWISE_SHAPES, (2, 0, 3)])
 @pytest.mark.parametrize("dtype", utils.FLOAT_DTYPES)
@@ -46,6 +56,7 @@ def test_ldexp(shape, dtype):
     )
 
     result = flag_gems.ldexp(inp, exponent)
+    _assert_ldexp_result_abi(result, inp, exponent)
 
     assert result.shape == reference.shape
     assert result.dtype == inp.dtype
@@ -64,6 +75,7 @@ def test_ldexp_broadcast_noncontiguous(dtype):
     )
 
     result = flag_gems.ldexp(inp, exponent)
+    _assert_ldexp_result_abi(result, inp, exponent)
 
     utils.gems_assert_close(result, reference, result.dtype)
 
@@ -94,6 +106,7 @@ def test_ldexp_dtype_promotion(self_dtype, other_dtype, expected_dtype):
     )
 
     result = flag_gems.ldexp(inp, exponent)
+    _assert_ldexp_result_abi(result, inp, exponent)
 
     assert result.dtype == expected_dtype
     utils.gems_assert_close(result, reference, expected_dtype)
@@ -113,6 +126,7 @@ def test_ldexp_special_values(dtype):
     )
 
     result = flag_gems.ldexp(inp, exponent)
+    _assert_ldexp_result_abi(result, inp, exponent)
 
     utils.gems_assert_close(result, reference, dtype, equal_nan=True)
 
@@ -130,7 +144,11 @@ def test_ldexp_autograd():
     (ref_input_grad,) = torch.autograd.grad(ref_out, ref_inp, ref_grad)
 
     result = flag_gems.ldexp(inp, exponent)
+    _assert_ldexp_result_abi(result, inp, exponent)
     (input_grad,) = torch.autograd.grad(result, inp, grad)
+    assert input_grad.device == inp.device
+    assert input_grad.dtype == inp.dtype
+    assert input_grad.shape == inp.shape
 
     utils.gems_assert_close(result, ref_out, result.dtype)
     utils.gems_assert_close(input_grad, ref_input_grad, input_grad.dtype)
