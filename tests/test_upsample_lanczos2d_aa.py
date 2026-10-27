@@ -177,8 +177,8 @@ def test_upsample_lanczos2d_aa_vec(use_scale_factors):
         scales = (None, None)
     reference_input = utils.to_reference(input)
     if flag_gems.vendor_name == "enflame":
-        # The native GCU weight-index operations cannot represent this
-        # composition's int64 intermediates. Use the independent CPU math.
+        # Select the independent CPU math explicitly for the vector overload,
+        # rather than depending on the runtime's implicit operator fallbacks.
         reference_input = input.cpu()
     reference = _reference(reference_input, output_size, False, scales[0], scales[1])
     expected_device, expected_dtype = input.device, input.dtype
