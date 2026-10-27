@@ -21,6 +21,10 @@ from . import accuracy_utils as utils
 
 
 def _reference(inp, exponent):
+    if flag_gems.vendor_name == "enflame":
+        # The target native ldexp DispatchStub has no GCU kernel. Preserve
+        # the chosen reference precision while evaluating the same ATen CPU API.
+        inp, exponent = inp.cpu(), exponent.cpu()
     return torch.ops.aten.ldexp.Tensor(inp, exponent).to(inp.dtype)
 
 
@@ -40,7 +44,7 @@ def test_ldexp_(shape, dtype):
     assert result is inp
     assert result.data_ptr() == original_pointer
     assert result.dtype == dtype
-    utils.gems_assert_close(result, reference, dtype)
+    utils.gems_assert_close(result.cpu(), reference.cpu(), dtype)
 
 
 @pytest.mark.ldexp_
@@ -60,7 +64,7 @@ def test_ldexp_noncontiguous_broadcast_(dtype):
     assert result is inp
     assert result.data_ptr() == original_pointer
     assert result.stride() == original_stride
-    utils.gems_assert_close(result, reference, dtype)
+    utils.gems_assert_close(result.cpu(), reference.cpu(), dtype)
 
 
 @pytest.mark.ldexp_
@@ -79,7 +83,7 @@ def test_ldexp_special_values_(dtype):
     result = flag_gems.ldexp_(inp, exponent)
 
     assert result is inp
-    utils.gems_assert_close(result, reference, dtype, equal_nan=True)
+    utils.gems_assert_close(result.cpu(), reference.cpu(), dtype, equal_nan=True)
 
 
 @pytest.mark.ldexp_
