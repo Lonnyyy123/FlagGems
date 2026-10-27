@@ -76,7 +76,12 @@ class _H800Latency:
         if op["native_api"] != "ops.mkldnn_rnn_layer":
             raise ValueError("Expected ops-baseline native LSTM composition")
         task = data["_collection"]["tasks"]["mkldnn_rnn_layer"]
-        if task["status"] != "completed" or task["returncode"] != 0:
+        if (
+            task["status"] != "completed"
+            or isinstance(task["returncode"], bool)
+            or not isinstance(task["returncode"], int)
+            or task["returncode"] != 0
+        ):
             raise ValueError("Expected a completed H800 LSTM collection")
         return (
             data,
@@ -101,7 +106,9 @@ class _H800Latency:
             row
             for group in shapes.values()
             for dtype, row in group.items()
-            if dtype == str(args[0].dtype) and row.get("config") == config
+            if dtype == str(args[0].dtype)
+            and json.dumps(row.get("config"), sort_keys=True, allow_nan=False)
+            == json.dumps(config, sort_keys=True, allow_nan=False)
         ]
         if len(rows) != 1:
             raise ValueError(
@@ -137,15 +144,16 @@ class _H800Latency:
             raise ValueError(
                 "H800 latency needs measured timing and its actual environment"
             )
-        value = row["T_us"]
-        if (
-            isinstance(value, bool)
-            or not isinstance(value, (int, float))
-            or not math.isfinite(value)
-            or value <= 0
-        ):
-            raise ValueError("H800 latency must be finite and positive")
-        latency = value / 1000
+        for field in ("T_us", "latency_ms"):
+            value = row[field]
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                raise ValueError("H800 latency must be finite and positive")
+        latency = row["T_us"] / 1000
         if not math.isclose(row["latency_ms"], latency, rel_tol=1e-9, abs_tol=1e-12):
             raise ValueError("H800 latency units disagree")
         self._imported_baseline = dict(
