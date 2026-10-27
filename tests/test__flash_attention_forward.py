@@ -270,10 +270,11 @@ def _freeze_flash_abi(query, key, return_debug_mask=False):
     )
 
 
-def _assert_all_outputs(actual, expected, dtype, query_abi):
+def _assert_all_outputs(actual, expected, dtype, query_abi, query):
     assert len(actual) == len(expected) == 5
     query_device = query_abi[0][2]
     query_dtype = query_abi[0][1]
+    assert query.device == query_device and query.dtype == query_dtype
     for value, (shape, expected_dtype, expected_device) in zip(actual, query_abi):
         assert tuple(value.shape) == shape
         assert value.dtype == expected_dtype and value.device == expected_device
@@ -337,7 +338,7 @@ def test__flash_attention_forward(dtype, shape, is_causal, scale_mode):
         scale=scale,
     )
 
-    _assert_all_outputs(actual, expected, dtype, query_abi)
+    _assert_all_outputs(actual, expected, dtype, query_abi, query)
     assert actual[0].shape == query.shape
     assert actual[0].untyped_storage().data_ptr() != query_pointer
 
@@ -368,7 +369,7 @@ def test__flash_attention_forward_windowed(window_size_left, window_size_right):
         query, key, value, None, None, 17, 31, 0.0, False, False, **kwargs
     )
 
-    _assert_all_outputs(actual, expected, dtype, query_abi)
+    _assert_all_outputs(actual, expected, dtype, query_abi, query)
 
 
 @pytest.mark.underscore_flash_attention_forward
@@ -416,7 +417,7 @@ def test__flash_attention_forward_gqa_alibi(is_causal):
         alibi_slopes=alibi_slopes,
     )
 
-    _assert_all_outputs(actual, expected, dtype, query_abi)
+    _assert_all_outputs(actual, expected, dtype, query_abi, query)
 
 
 @pytest.mark.underscore_flash_attention_forward
@@ -469,7 +470,7 @@ def test__flash_attention_forward_noncontiguous_bshd(dtype):
         scale=None,
     )
 
-    _assert_all_outputs(actual, expected, dtype, query_abi)
+    _assert_all_outputs(actual, expected, dtype, query_abi, query)
 
 
 @pytest.mark.underscore_flash_attention_forward
@@ -510,7 +511,7 @@ def test__flash_attention_forward_seqused_k_metadata():
         seqused_k=seqused_k,
     )
 
-    _assert_all_outputs(actual, expected, dtype, query_abi)
+    _assert_all_outputs(actual, expected, dtype, query_abi, query)
 
 
 @pytest.mark.underscore_flash_attention_forward
@@ -558,7 +559,7 @@ def test__flash_attention_forward_varlen(dtype):
         scale=None,
     )
 
-    _assert_all_outputs(actual, expected, dtype, query_abi)
+    _assert_all_outputs(actual, expected, dtype, query_abi, query)
 
 
 @pytest.mark.underscore_flash_attention_forward
@@ -602,7 +603,7 @@ def test__flash_attention_forward_dropout_debug_mask(dropout_p):
         scale=None,
     )
 
-    _assert_all_outputs(actual, replay, dtype, query_abi)
+    _assert_all_outputs(actual, replay, dtype, query_abi, query)
     assert len(actual) == len(replay) == 5
     utils.gems_assert_equal(actual[0].cpu(), replay[0].cpu())
     utils.gems_assert_equal(actual[1].cpu(), replay[1].cpu())

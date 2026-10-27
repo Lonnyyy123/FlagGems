@@ -277,6 +277,7 @@ def test__flash_attention_forward(
             f"{utils.gems_log_prefix(flag_gems._flash_attention_forward)} _FLASH_ATTENTION_FORWARD"
             in caplog.text
         )
+    assert q.device == q_device and q.dtype == q_dtype
     assert len(result) == 5
     for output, (shape, dtype_expected, device_expected) in zip(result, expected_abi):
         assert tuple(output.shape) == shape
