@@ -213,7 +213,7 @@ def test_put__index_source_diff_shapes(shape, dtype):
 @pytest.mark.parametrize("dtype", [torch.int32, torch.int64])
 def test_put__integer(dtype):
     inp = torch.zeros(100, dtype=dtype, device=flag_gems.device)
-    ref_inp = utils.to_reference(inp.clone(), True)
+    ref_inp = utils.to_reference(inp.clone())
 
     import numpy as np
 
@@ -223,7 +223,7 @@ def test_put__integer(dtype):
     source = torch.randint(0, 1000, (50,), dtype=dtype, device=flag_gems.device)
 
     ref_index = utils.to_reference(index)
-    ref_source = utils.to_reference(source, True)
+    ref_source = utils.to_reference(source)
     ref_inp.put_(ref_index, ref_source)
     flag_gems.put_(inp, index, source)
 
