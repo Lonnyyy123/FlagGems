@@ -175,10 +175,20 @@ def test_upsample_lanczos2d_aa_vec(use_scale_factors):
         args = ((12, 7), False, None)
         output_size = (12, 7)
         scales = (None, None)
-    reference = _reference(
-        utils.to_reference(input), output_size, False, scales[0], scales[1]
-    )
+    reference_input = utils.to_reference(input)
+    if flag_gems.vendor_name == "enflame":
+        # The native GCU weight-index operations cannot represent this
+        # composition's int64 intermediates. Use the independent CPU math.
+        reference_input = input.cpu()
+    reference = _reference(reference_input, output_size, False, scales[0], scales[1])
+    expected_device, expected_dtype = input.device, input.dtype
+    expected_shape = (*input.shape[:2], *output_size)
     result = flag_gems._upsample_lanczos2d_aa_vec(input, *args)
+    # Observe the original output ABI before numerical comparison moves to CPU.
+    assert result.device == expected_device
+    assert result.dtype == expected_dtype
+    assert tuple(result.shape) == expected_shape
+    assert result.data_ptr() != input.data_ptr()
     _assert_close(result, reference, torch.float32)
 
 
