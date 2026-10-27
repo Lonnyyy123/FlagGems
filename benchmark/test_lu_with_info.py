@@ -36,6 +36,8 @@ _TEST_DTYPES = (
 
 
 _H800_COLLECTION_SOURCE = "95847c9f7040152cb774fe56183eb280c5764c97"
+_H800_ARTIFACT_URL = "https://raw.githubusercontent.com/zhaojs12345/ops-baseline/10a2775cd3674d2029cfeea37cc16b0bf3970949/op_pytorch_h800_lu_with_info_current_core_20261028.json"
+_H800_PROVENANCE_URL = "https://raw.githubusercontent.com/zhaojs12345/ops-baseline/10a2775cd3674d2029cfeea37cc16b0bf3970949/op_pytorch_h800_lu_with_info_current_core_20261028.provenance.json"
 _H800_ARTIFACT_SHA256 = "ca1f3375753e7397acf29b944f85a8443ebb50a1956e924d81f989057f5e5923"
 _H800_PROVENANCE_SHA256 = "bf68536d95d3d96ae1b2da12239d434b756884d3a80bcc60cd19cad1e31c5567"
 
@@ -112,6 +114,7 @@ class LuWithInfoBenchmark(base.Benchmark):
             raise ValueError("LU baseline differs from the original core input recipe")
         return records, {
             "kind": "external_nvidia", "operator": "_lu_with_info",
+            "artifact_url": _H800_ARTIFACT_URL, "provenance_url": _H800_PROVENANCE_URL,
             "artifact_sha256": hashlib.sha256(payload).hexdigest(),
             "provenance_sha256": hashlib.sha256(sidecar_payload).hexdigest(),
             "collection_source_commit": _H800_COLLECTION_SOURCE,
