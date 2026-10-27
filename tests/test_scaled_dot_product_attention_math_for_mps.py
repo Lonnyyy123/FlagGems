@@ -58,14 +58,19 @@ def test_scaled_dot_product_attention_math_for_mps(
     ref_output = utils.to_reference(ref_output.to(dtype), True)
     ref_weights = utils.to_reference(ref_weights.to(dtype), True)
 
+    expected_inputs = tuple((x.device, x.dtype, tuple(x.shape)) for x in (q, k, v))
     output, attn_weights = flag_gems._scaled_dot_product_attention_math_for_mps(
         q, k, v, is_causal=is_causal
     )
 
-    assert output.device == q.device and output.dtype == dtype
-    assert output.shape == q.shape
-    assert attn_weights.device == q.device and attn_weights.dtype == dtype
-    assert attn_weights.shape == (*q.shape[:-1], k.shape[-2])
+    for inp, expected in zip((q, k, v), expected_inputs):
+        assert (inp.device, inp.dtype, tuple(inp.shape)) == expected
+    device, expected_dtype, query_shape = expected_inputs[0]
+    key_shape = expected_inputs[1][2]
+    assert output.device == device and output.dtype == expected_dtype
+    assert output.shape == query_shape
+    assert attn_weights.device == device and attn_weights.dtype == expected_dtype
+    assert attn_weights.shape == (*query_shape[:-1], key_shape[-2])
 
     # output and attn_weights both reduce over the key/sequence dimension
     # (softmax normalization + weighted value sum), so scale atol accordingly.
