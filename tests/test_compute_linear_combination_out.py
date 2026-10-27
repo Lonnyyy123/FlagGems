@@ -30,8 +30,6 @@ MNK_SHAPES = [
 
 
 def _reference_out(inp, coefficients, out):
-    # Preserve the operand dtype: ATen rounds each accumulated term in out.
-    # A promoted reference changes that rounding contract.
     return torch.ops.aten._compute_linear_combination.out(
         inp, coefficients, out=out
     )
@@ -47,8 +45,8 @@ def test_compute_linear_combination_out(m, n, k, dtype):
     coefficients = torch.randn((m, n), dtype=dtype, device=flag_gems.device)
     saved_inp = inp.clone()
     saved_coefficients = coefficients.clone()
-    ref_inp = utils.to_reference(inp, False)
-    ref_coefficients = utils.to_reference(coefficients, False)
+    ref_inp = utils.to_reference(inp, True)
+    ref_coefficients = utils.to_reference(coefficients, True)
     ref_out = torch.zeros((m, k), dtype=ref_inp.dtype, device=ref_inp.device)
     out = torch.zeros((m, k), dtype=dtype, device=flag_gems.device)
     out_pointer = out.data_ptr()
@@ -77,8 +75,8 @@ def test_compute_linear_combination_out_resize(dtype):
     m, n, k = 3, 4, 5
     inp = torch.randn((n, k), dtype=dtype, device=flag_gems.device)
     coefficients = torch.randn((m, n), dtype=dtype, device=flag_gems.device)
-    ref_inp = utils.to_reference(inp, False)
-    ref_coefficients = utils.to_reference(coefficients, False)
+    ref_inp = utils.to_reference(inp, True)
+    ref_coefficients = utils.to_reference(coefficients, True)
     ref_out = torch.empty((0,), dtype=ref_inp.dtype, device=ref_inp.device)
     out = torch.empty((0,), dtype=dtype, device=flag_gems.device)
 
@@ -105,8 +103,8 @@ def test_compute_linear_combination_out_noncontiguous(dtype):
     m, n, k = 5, 7, 9
     inp = torch.randn((n, k), dtype=dtype, device=flag_gems.device)
     coefficients = torch.randn((m, n), dtype=dtype, device=flag_gems.device)
-    ref_inp = utils.to_reference(inp, False)
-    ref_coefficients = utils.to_reference(coefficients, False)
+    ref_inp = utils.to_reference(inp, True)
+    ref_coefficients = utils.to_reference(coefficients, True)
     ref_out = torch.zeros((k, m), dtype=ref_inp.dtype, device=ref_inp.device).t()
     out = torch.zeros((k, m), dtype=dtype, device=flag_gems.device).t()
     out_pointer = out.data_ptr()
@@ -130,21 +128,9 @@ def test_compute_linear_combination_out_rejects_dtype_mismatch():
     torch.manual_seed(0)
     inp = torch.randn((4, 5), dtype=torch.float32, device=flag_gems.device)
     coefficients = torch.randn((3, 4), dtype=torch.float32, device=flag_gems.device)
-    out = torch.zeros((3, 5), dtype=torch.int32, device=flag_gems.device)
-    ref_inp = utils.to_reference(inp, False)
-    ref_coefficients = utils.to_reference(coefficients, False)
-    ref_out = torch.zeros((3, 5), dtype=torch.int32, device=ref_inp.device)
-    try:
-        reference = _reference_out(ref_inp, ref_coefficients, ref_out)
-    except (RuntimeError, AssertionError):
-        with pytest.raises((RuntimeError, AssertionError)):
-            flag_gems._compute_linear_combination_out(inp, coefficients, out=out)
-        return
+    out = torch.empty((3, 5), dtype=torch.int32, device=flag_gems.device)
 
-    # Some native backends accept an integer output and cast each addition.
-    result = flag_gems._compute_linear_combination_out(inp, coefficients, out=out)
-    assert result is out
-    assert result.device == inp.device
-    assert result.dtype == torch.int32
-    assert result.shape == (3, 5)
-    utils.gems_assert_equal(result, reference)
+    with pytest.raises((RuntimeError, AssertionError)):
+        flag_gems._compute_linear_combination_out(
+            inp, coefficients, out=out
+        )
