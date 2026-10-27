@@ -189,7 +189,9 @@ def _vec_h800_records():
         or environment["run"]["selected_ops"]
         != ["median", "median_dim", "row_stack_out", "upsample_lanczos2d_aa_vec"]
     ):
-        raise ValueError("Lanczos baseline is not the collected original H800 composition")
+        raise ValueError(
+            "Lanczos baseline is not the collected original H800 composition"
+        )
     return artifact["upsample_lanczos2d_aa_vec"]["shapes"]
 
 
@@ -211,7 +213,9 @@ class UpsampleLanczosVecBenchmark(UpsampleLanczosBenchmark):
             or align_corners is not False
             or tuple(scale_factors) != (scale, scale)
         ):
-            raise ValueError("Input differs from the collected original Lanczos core recipe")
+            raise ValueError(
+                "Input differs from the collected original Lanczos core recipe"
+            )
         record = _vec_h800_records()[str(list(shape))][str(inp.dtype)]
         config = record["config"]
         expected_inputs = {
