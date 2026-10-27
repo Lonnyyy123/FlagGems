@@ -59,14 +59,15 @@ def test_standard_gamma_grad_regimes(shape, dtype, alpha_range, output_range):
             * (out_hi - out_lo)
             + out_lo
         )
-    alpha_before = alpha.clone()
-    output_before = output.clone()
+    alpha_before = utils.to_reference(alpha.clone())
+    output_before = utils.to_reference(output.clone())
     ref_alpha = utils.to_reference(alpha, True)
     ref_output = utils.to_reference(output, True)
 
     reference = torch._standard_gamma_grad(ref_alpha, ref_output)
     result = flag_gems.standard_gamma_grad(alpha, output)
 
+    assert result.device == alpha.device
     assert result.shape == shape
     assert result.dtype == dtype
     utils.gems_assert_close(result, reference, dtype)
@@ -87,6 +88,9 @@ def test_standard_gamma_grad_noncontiguous(dtype):
     reference = torch._standard_gamma_grad(ref_alpha, ref_output)
     result = flag_gems.standard_gamma_grad(alpha, output)
 
+    assert result.device == alpha.device
+    assert result.dtype == alpha.dtype
+    assert result.shape == alpha.shape
     utils.gems_assert_close(result, reference, dtype)
 
 
