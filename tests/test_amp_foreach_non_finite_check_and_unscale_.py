@@ -187,7 +187,7 @@ def test_amp_foreach_non_finite_check_and_unscale__mutation_contract(
     tensor_layouts = _layout_snapshot(tensors)
     found_layout = _layout_snapshot([found_inf])
     inv_layout = _layout_snapshot([inv_scale])
-    inv_before = inv_scale.clone()
+    inv_before = utils.to_reference(inv_scale.clone(), False)
     ref_tensors = [utils.to_reference(tensor.clone(), False) for tensor in tensors]
     ref_found = utils.to_reference(found_inf.clone(), False)
     ref_scale = utils.to_reference(inv_scale.clone(), False)
