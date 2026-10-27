@@ -38,12 +38,18 @@ def _quantization_reference(weight):
 
 def _snapshot(weight, scale, zero_point, bias):
     return dict(device=weight.device, shape=tuple(weight.shape),
+                # Preserve metadata checks previously coupled to the native
+                # reference aliases; freeze mode and expectations before entry.
+                native_bias_metadata=(bias.device, bias.dtype) if not utils.TO_CPU else None,
                 inputs=[v.detach().cpu().clone() for v in (weight, scale, zero_point, bias)],
                 packed_size=16 + 4 * bias.numel() + weight.numel())
 
 
 def _assert_contract(packed, state, weight, scale, zero_point, bias):
     assert packed.device == state["device"]
+    assert weight.device == state["device"]
+    if state["native_bias_metadata"] is not None:
+        assert (bias.device, bias.dtype) == state["native_bias_metadata"]
     assert packed.dtype == torch.uint8
     assert packed.ndim == 1 and packed.numel() == state["packed_size"]
     assert all(torch.equal(actual.detach().cpu(), expected)
