@@ -53,10 +53,16 @@ def _call_median_dim(inp, dim, keepdim, equal_nan=False, exact_indices=True):
     ref_inp = utils.to_reference(inp)
     ref = _median_dim_reference(ref_inp, dim=dim, keepdim=keepdim)
 
+    expected_device, expected_dtype = inp.device, inp.dtype
     result = flag_gems.median_dim(inp, dim=dim, keepdim=keepdim)
 
-    assert result.values.device == inp.device and result.values.dtype == inp.dtype
-    assert result.indices.device == inp.device and result.indices.dtype == torch.int64
+    assert (
+        result.values.device == expected_device
+        and result.values.dtype == expected_dtype
+    )
+    assert (
+        result.indices.device == expected_device and result.indices.dtype == torch.int64
+    )
     assert result.values.shape == result.indices.shape
     assert result.values.shape == ref.values.shape
     assert result.indices.shape == ref.indices.shape
@@ -130,10 +136,16 @@ def test_median_dim_strided_nonlast_reduction(keepdim):
 def test_median_dim_even_count_picks_lower_middle(values, expected):
     inp = torch.tensor(values, dtype=torch.float32, device=flag_gems.device)
 
+    expected_device, expected_dtype = inp.device, inp.dtype
     result = flag_gems.median_dim(inp, dim=0)
 
-    assert result.values.device == inp.device and result.values.dtype == inp.dtype
-    assert result.indices.device == inp.device and result.indices.dtype == torch.int64
+    assert (
+        result.values.device == expected_device
+        and result.values.dtype == expected_dtype
+    )
+    assert (
+        result.indices.device == expected_device and result.indices.dtype == torch.int64
+    )
 
     value, index = expected
     _assert_median_observed_equal(
@@ -155,10 +167,16 @@ def test_median_dim_propagates_nan(dtype):
 def test_median_dim_scalar_input():
     inp = torch.tensor(3.0, dtype=torch.float32, device=flag_gems.device)
 
+    expected_device, expected_dtype = inp.device, inp.dtype
     result = flag_gems.median_dim(inp, dim=0)
 
-    assert result.values.device == inp.device and result.values.dtype == inp.dtype
-    assert result.indices.device == inp.device and result.indices.dtype == torch.int64
+    assert (
+        result.values.device == expected_device
+        and result.values.dtype == expected_dtype
+    )
+    assert (
+        result.indices.device == expected_device and result.indices.dtype == torch.int64
+    )
     assert result.values.ndim == 0 and result.indices.ndim == 0
     _assert_median_observed_equal(
         result.values, utils.to_reference(torch.full_like(result.values, 3.0))
@@ -184,11 +202,17 @@ def test_median_dim_empty_but_nonzero_reduction(shape, dim):
     """Zero elements overall, but the reduced axis is not the empty one."""
     inp = torch.empty(shape, dtype=torch.float32, device=flag_gems.device)
 
+    expected_device, expected_dtype = inp.device, inp.dtype
     result = flag_gems.median_dim(inp, dim=dim)
 
     ref = _median_dim_reference(utils.to_reference(inp), dim=dim)
-    assert result.values.device == inp.device and result.values.dtype == inp.dtype
-    assert result.indices.device == inp.device and result.indices.dtype == torch.int64
+    assert (
+        result.values.device == expected_device
+        and result.values.dtype == expected_dtype
+    )
+    assert (
+        result.indices.device == expected_device and result.indices.dtype == torch.int64
+    )
     _assert_median_observed_equal(result.values, ref.values)
     _assert_median_observed_equal(result.indices, ref.indices)
 
@@ -209,12 +233,18 @@ def test_median_dim_named_dim_preserves_names(keepdim):
     ref = _median_dim_reference(
         utils.to_reference(inp.rename(None)), dim=0, keepdim=keepdim
     )
+    expected_device, expected_dtype = inp.device, inp.dtype
     result = flag_gems.median_dim(inp, dim="reduce", keepdim=keepdim)
 
     expected_names = ("reduce", "feature") if keepdim else ("feature",)
     assert result.values.names == expected_names
     assert result.indices.names == expected_names
-    assert result.values.device == inp.device and result.values.dtype == inp.dtype
-    assert result.indices.device == inp.device and result.indices.dtype == torch.int64
+    assert (
+        result.values.device == expected_device
+        and result.values.dtype == expected_dtype
+    )
+    assert (
+        result.indices.device == expected_device and result.indices.dtype == torch.int64
+    )
     _assert_median_observed_equal(result.values.rename(None), ref.values)
     _assert_median_observed_equal(result.indices.rename(None), ref.indices)

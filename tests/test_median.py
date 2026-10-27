@@ -96,13 +96,14 @@ def _assert_median_observed_equal(actual, expected, **kwargs):
     return flag_gems.testing.assert_equal(actual, expected, **kwargs)
 
 
-def _assert_median_dim_observed(res, ref, dtype, **kwargs):
+def _assert_median_dim_observed(res, ref, dtype, *, expected_device, **kwargs):
+    values, indices = res
+    assert values.device == expected_device and values.dtype == dtype
+    assert indices.device == expected_device and indices.dtype == torch.int64
+    assert indices.element_size() == 8
+    assert values.shape == ref[0].shape and indices.shape == ref[1].shape
     if flag_gems.vendor_name == "enflame":
         inp = kwargs["inp"]
-        values, indices = res
-        assert values.device == inp.device and values.dtype == inp.dtype
-        assert indices.device == inp.device and indices.dtype == torch.int64
-        assert indices.element_size() == 8
         assert values.shape == indices.shape
         res = values.cpu(), indices.cpu()
         ref = ref[0].cpu(), ref[1].cpu()
@@ -207,10 +208,17 @@ def test_median_dim(shape, dim, keepdim, dtype):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=dim, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=dim, keepdim=keepdim)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, inp=inp, dim=dim, keepdim=keepdim
+        res_out,
+        ref_out,
+        dtype,
+        expected_device=expected_device,
+        inp=inp,
+        dim=dim,
+        keepdim=keepdim,
     )
 
 
@@ -250,8 +258,17 @@ def test_median_nan_dim(dtype):
     ref_inp = utils.to_reference(inp)
 
     ref_dim = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_dim = flag_gems.median_dim(inp, dim=1)
-    _assert_median_dim_observed(res_dim, ref_dim, dtype, equal_nan=True, inp=inp, dim=1)
+    _assert_median_dim_observed(
+        res_dim,
+        ref_dim,
+        dtype,
+        equal_nan=True,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
+    )
 
 
 @pytest.mark.median
@@ -321,6 +338,7 @@ def test_median_tie_lower_median(dtype, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -328,6 +346,7 @@ def test_median_tie_lower_median(dtype, keepdim):
         ref_out,
         dtype,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
         keepdim=keepdim,
@@ -348,10 +367,17 @@ def test_median_direct_duplicate_indices_select_value(dtype):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=0
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=0,
     )
 
 
@@ -365,9 +391,12 @@ def test_median_reduction_boundary_dim0(dtype, reduction_size):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0)
 
-    _assert_median_dim_observed(res_out, ref_out, dtype, inp=inp, dim=0)
+    _assert_median_dim_observed(
+        res_out, ref_out, dtype, expected_device=expected_device, inp=inp, dim=0
+    )
 
 
 @pytest.mark.median_dim
@@ -394,10 +423,17 @@ def test_median_direct_public_shapes_dim0(dtype, shape, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0, keepdim=keepdim)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, inp=inp, dim=0, keepdim=keepdim
+        res_out,
+        ref_out,
+        dtype,
+        expected_device=expected_device,
+        inp=inp,
+        dim=0,
+        keepdim=keepdim,
     )
 
 
@@ -418,6 +454,7 @@ def test_median_direct_nan_first_index_dim0(dtype, reduction_size, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -426,6 +463,7 @@ def test_median_direct_nan_first_index_dim0(dtype, reduction_size, keepdim):
         dtype,
         equal_nan=True,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=0,
         keepdim=keepdim,
@@ -446,10 +484,17 @@ def test_median_direct_non_contiguous_dim0(dtype, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0, keepdim=keepdim)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, inp=inp, dim=0, keepdim=keepdim
+        res_out,
+        ref_out,
+        dtype,
+        expected_device=expected_device,
+        inp=inp,
+        dim=0,
+        keepdim=keepdim,
     )
 
 
@@ -476,6 +521,7 @@ def test_median_direct_named_dim0_preserves_names(keepdim):
     ref_inp = utils.to_reference(inp.rename(None))
 
     ref_out = _median_dim_reference(ref_inp, dim=0, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim="reduce", keepdim=keepdim)
 
     expected_names = ("reduce", "feature") if keepdim else ("feature",)
@@ -485,6 +531,7 @@ def test_median_direct_named_dim0_preserves_names(keepdim):
         (res_out.values.rename(None), res_out.indices.rename(None)),
         ref_out,
         torch.float32,
+        expected_device=expected_device,
         inp=inp.rename(None),
         dim=0,
         keepdim=keepdim,
@@ -673,9 +720,16 @@ def test_median_full_registration_nan_semantics_dim():
     ref_inp = utils.to_reference(inp)
 
     ref_dim = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_dim = flag_gems.median_dim(inp, dim=1)
     _assert_median_dim_observed(
-        res_dim, ref_dim, torch.float32, equal_nan=True, inp=inp, dim=1
+        res_dim,
+        ref_dim,
+        torch.float32,
+        equal_nan=True,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -745,10 +799,17 @@ def test_median_scalar_dim(keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0, keepdim=keepdim)
 
     _assert_median_dim_observed(
-        res_out, ref_out, torch.float32, inp=inp, dim=0, keepdim=keepdim
+        res_out,
+        ref_out,
+        torch.float32,
+        expected_device=expected_device,
+        inp=inp,
+        dim=0,
+        keepdim=keepdim,
     )
 
 
@@ -774,8 +835,11 @@ def test_median_non_contiguous_dim():
     ref_inp = utils.to_reference(inp)
 
     ref_dim = _median_dim_reference(ref_inp, dim=0)
+    expected_device = inp.device
     res_dim = flag_gems.median_dim(inp, dim=0)
-    _assert_median_dim_observed(res_dim, ref_dim, torch.float32, inp=inp, dim=0)
+    _assert_median_dim_observed(
+        res_dim, ref_dim, torch.float32, expected_device=expected_device, inp=inp, dim=0
+    )
 
 
 @pytest.mark.median_dim
@@ -792,10 +856,17 @@ def test_median_high_dim_semantics(dtype, shape, dim, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=dim, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=dim, keepdim=keepdim)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, inp=inp, dim=dim, keepdim=keepdim
+        res_out,
+        ref_out,
+        dtype,
+        expected_device=expected_device,
+        inp=inp,
+        dim=dim,
+        keepdim=keepdim,
     )
 
 
@@ -806,9 +877,12 @@ def test_median_large_width(width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
-    _assert_median_dim_observed(res_out, ref_out, torch.float32, inp=inp, dim=1)
+    _assert_median_dim_observed(
+        res_out, ref_out, torch.float32, expected_device=expected_device, inp=inp, dim=1
+    )
 
 
 @pytest.mark.skipif(
@@ -828,6 +902,7 @@ def test_median_float64_key_select(width, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -835,6 +910,7 @@ def test_median_float64_key_select(width, keepdim):
         ref_out,
         torch.float64,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
         keepdim=keepdim,
@@ -860,6 +936,7 @@ def test_median_float64_key_select_nan_first_index(width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
@@ -868,6 +945,7 @@ def test_median_float64_key_select_nan_first_index(width):
         torch.float64,
         equal_nan=True,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
     )
@@ -887,10 +965,17 @@ def test_median_extended_lastdim_width(dtype):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -913,10 +998,17 @@ def test_median_lastdim_sort_unique_exact_index(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=True, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=True,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
     _assert_median_observed_equal(res_out.indices, expected_indices)
 
@@ -936,6 +1028,7 @@ def test_median_lastdim_sort_1536_unique_exact_index(dtype, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -943,6 +1036,7 @@ def test_median_lastdim_sort_1536_unique_exact_index(dtype, keepdim):
         ref_out,
         dtype,
         exact_indices=True,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
         keepdim=keepdim,
@@ -961,10 +1055,17 @@ def test_median_fp32_key_select_boundaries(width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, torch.float32, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        torch.float32,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -982,6 +1083,7 @@ def test_median_fp32_key_select_unique_exact_index(width, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -989,6 +1091,7 @@ def test_median_fp32_key_select_unique_exact_index(width, keepdim):
         ref_out,
         torch.float32,
         exact_indices=True,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
         keepdim=keepdim,
@@ -1011,6 +1114,7 @@ def test_median_fp32_key_select_nan_first_index(width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
@@ -1019,6 +1123,7 @@ def test_median_fp32_key_select_nan_first_index(width):
         torch.float32,
         equal_nan=True,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
     )
@@ -1052,10 +1157,17 @@ def test_median_fp32_key_select_duplicates_infinities_and_zeros():
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, torch.float32, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        torch.float32,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -1072,10 +1184,17 @@ def test_median_fp32_key_select_signed_zero_bits(width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, torch.float32, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        torch.float32,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -1091,10 +1210,17 @@ def test_median_f16_key_select_boundaries(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -1112,6 +1238,7 @@ def test_median_fp16_key_select_unique_exact_index(width, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -1119,6 +1246,7 @@ def test_median_fp16_key_select_unique_exact_index(width, keepdim):
         ref_out,
         torch.float16,
         exact_indices=True,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
         keepdim=keepdim,
@@ -1143,6 +1271,7 @@ def test_median_f16_key_select_nan_first_index(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
@@ -1151,6 +1280,7 @@ def test_median_f16_key_select_nan_first_index(dtype, width):
         dtype,
         equal_nan=True,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
     )
@@ -1169,6 +1299,7 @@ def test_median_f16_key_select_width640_keepdim(dtype, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=-1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=-1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -1176,6 +1307,7 @@ def test_median_f16_key_select_width640_keepdim(dtype, keepdim):
         ref_out,
         dtype,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=-1,
         keepdim=keepdim,
@@ -1209,10 +1341,17 @@ def test_median_f16_key_select_duplicates_infinities_and_zeros(dtype):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -1228,10 +1367,17 @@ def test_median_f16_key_select_signed_zero_index_bits(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
     # The original output metadata was checked above; observe selected bits on
     # CPU so a backend's gather-index dtype support cannot mask the median ABI.
@@ -1249,9 +1395,16 @@ def test_median_f16_key_select_width640_nonlast_and_no_dim_dim(dtype):
     width = 640
     inp_dim0 = torch.randn((width, 3), dtype=dtype, device=flag_gems.device)
     ref_dim0 = _median_dim_reference(utils.to_reference(inp_dim0), dim=0)
+    expected_device = inp_dim0.device
     res_dim0 = flag_gems.median_dim(inp_dim0, dim=0)
     _assert_median_dim_observed(
-        res_dim0, ref_dim0, dtype, exact_indices=False, inp=inp_dim0, dim=0
+        res_dim0,
+        ref_dim0,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp_dim0,
+        dim=0,
     )
 
 
@@ -1280,10 +1433,18 @@ def test_median_large_width_nan_first_index(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, equal_nan=True, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        equal_nan=True,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
     _assert_median_observed_equal(res_out.indices, expected_indices)
     assert torch.all(torch.isnan(res_out.values)).item()
@@ -1330,6 +1491,7 @@ def test_median_non_lastdim_fallback_nan_first_index(dtype, keepdim):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=0, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=0, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -1338,6 +1500,7 @@ def test_median_non_lastdim_fallback_nan_first_index(dtype, keepdim):
         dtype,
         equal_nan=True,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=0,
         keepdim=keepdim,
@@ -1377,6 +1540,7 @@ def test_median_strided_nonlast_large_reduction_semantics(dtype, keepdim):
 
     ref_inp = utils.to_reference(inp)
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1, keepdim=keepdim)
 
     _assert_median_dim_observed(
@@ -1385,6 +1549,7 @@ def test_median_strided_nonlast_large_reduction_semantics(dtype, keepdim):
         dtype,
         equal_nan=dtype.is_floating_point,
         exact_indices=False,
+        expected_device=expected_device,
         inp=inp,
         dim=1,
         keepdim=keepdim,
@@ -1446,6 +1611,7 @@ def test_median_strided_nonlast_named_dim_preserves_names(keepdim):
     ref_inp = utils.to_reference(inp.rename(None))
 
     ref_out = _median_dim_reference(ref_inp, dim=1, keepdim=keepdim)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim="reduce", keepdim=keepdim)
 
     expected_names = ("batch", "reduce", "feature") if keepdim else ("batch", "feature")
@@ -1455,6 +1621,7 @@ def test_median_strided_nonlast_named_dim_preserves_names(keepdim):
         (res_out.values.rename(None), res_out.indices.rename(None)),
         ref_out,
         torch.float32,
+        expected_device=expected_device,
         inp=inp.rename(None),
         dim=1,
         keepdim=keepdim,
@@ -1474,10 +1641,17 @@ def test_median_large_width_duplicate_indices_select_value(dtype):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -1494,10 +1668,17 @@ def test_median_int_lastdim_select_boundaries(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
@@ -1522,10 +1703,17 @@ def test_median_int_lastdim_select_unique_exact_index(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=True, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=True,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
     _assert_median_observed_equal(res_out.indices, expected_indices)
 
@@ -1538,10 +1726,17 @@ def test_median_int_lastdim_select_all_equal(dtype, width):
     ref_inp = utils.to_reference(inp)
 
     ref_out = _median_dim_reference(ref_inp, dim=1)
+    expected_device = inp.device
     res_out = flag_gems.median_dim(inp, dim=1)
 
     _assert_median_dim_observed(
-        res_out, ref_out, dtype, exact_indices=False, inp=inp, dim=1
+        res_out,
+        ref_out,
+        dtype,
+        exact_indices=False,
+        expected_device=expected_device,
+        inp=inp,
+        dim=1,
     )
 
 
