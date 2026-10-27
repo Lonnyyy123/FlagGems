@@ -181,7 +181,14 @@ def _assert_outputs(res_out, ref_out, *, a=None, b=None, left=True):
     denominator = norm(matrix) * norm(solution) + norm(rhs)
     solve_error = norm(error) / denominator.clamp_min(torch.finfo(torch.float64).tiny)
 
-    target = matrix.mT if a.is_contiguous() and not a.is_complex() else matrix
+    # Measured GCU LU reconstructs A for both layouts; CUDA contiguous real LU
+    # reconstructs A.T. Preserve the original rule outside this measured backend.
+    transpose_lu = (
+        a.is_contiguous()
+        and not a.is_complex()
+        and flag_gems.vendor_name != "enflame"
+    )
+    target = matrix.mT if transpose_lu else matrix
     permutation, lower, upper = torch.lu_unpack(lu, pivots)
     row_indices = permutation.real.argmax(dim=-2)
     target = target.gather(-2, row_indices.unsqueeze(-1).expand_as(target))
