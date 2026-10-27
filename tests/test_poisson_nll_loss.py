@@ -24,6 +24,8 @@ SHAPES = [(2, 3)] if cfg.QUICK_MODE else [(2, 3), (128, 256), (512, 512)]
 
 
 def _poisson_ones(shape, dtype):
+    if flag_gems.vendor_name == "enflame" and dtype == torch.float64:
+        pytest.skip("This mixed-dtype fixture requires genuine target Float64 storage")
     if flag_gems.vendor_name == "kunlunxin" and dtype == torch.float64:
         value = torch.ones(shape, dtype=dtype, device="cpu")
         return (
@@ -34,6 +36,13 @@ def _poisson_ones(shape, dtype):
             .reshape(shape)
         )
     return torch.ones(shape, dtype=dtype, device=flag_gems.device)
+
+
+def _poisson_target(raw, dtype):
+    # Keep the original target RNG draws; only the logical cast occurs on CPU.
+    if flag_gems.vendor_name == "enflame":
+        return raw.cpu().to(dtype).to(raw.device)
+    return raw.to(dtype)
 
 
 def _poisson_reference_input(value):
@@ -80,7 +89,7 @@ def test_accuracy_poisson_nll_loss(shape, dtype, reduction, log_input, full):
     input = torch.randn(shape, dtype=dtype, device=flag_gems.device)
     if not log_input:
         input = input.abs() + 0.1
-    target = torch.randint(0, 5, shape, device=flag_gems.device).to(dtype)
+    target = _poisson_target(torch.randint(0, 5, shape, device=flag_gems.device), dtype)
     ref = torch.ops.aten.poisson_nll_loss(
         utils.to_reference(input, upcast=True),
         utils.to_reference(target, upcast=True),
@@ -97,7 +106,9 @@ def test_accuracy_poisson_nll_loss(shape, dtype, reduction, log_input, full):
 @pytest.mark.parametrize("reduction", [0, 1, 2, 3])
 def test_accuracy_poisson_nll_loss_broadcast_noncontiguous(reduction):
     input = torch.randn((7, 5), device=flag_gems.device).T
-    target = torch.randint(0, 5, (1, 7), device=flag_gems.device).float()
+    target = _poisson_target(
+        torch.randint(0, 5, (1, 7), device=flag_gems.device), torch.float32
+    )
     ref = torch.ops.aten.poisson_nll_loss(
         utils.to_reference(input),
         utils.to_reference(target),
@@ -346,7 +357,9 @@ def test_poisson_nll_loss_special_eps(eps):
 @pytest.mark.parametrize("reduction", [1, 2])
 def test_poisson_nll_loss_reduction_boundary(size, reduction):
     input = torch.randn(size, device=flag_gems.device)
-    target = torch.randint(0, 5, (size,), device=flag_gems.device).float()
+    target = _poisson_target(
+        torch.randint(0, 5, (size,), device=flag_gems.device), torch.float32
+    )
     ref = torch.ops.aten.poisson_nll_loss(
         utils.to_reference(input, upcast=True),
         utils.to_reference(target, upcast=True),
