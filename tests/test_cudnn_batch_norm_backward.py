@@ -24,7 +24,7 @@ from . import accuracy_utils as utils
 @pytest.mark.parametrize("dtype", utils.FLOAT_DTYPES)
 @pytest.mark.parametrize("affine", [True, False])
 def test_cudnn_batch_norm_backward(shape, dtype, affine):
-    if (flag_gems.vendor_name == "nvidia" and dtype == torch.bfloat16
+    if (flag_gems.vendor_name == "nvidia" and not utils.TO_CPU and dtype == torch.bfloat16
             and str(torch.__version__) in {"2.8.0a0+5228986c39.nv25.05", "2.8.0a0+5228986c39.nv25.06"}):
         pytest.skip("Native cuDNN batch norm forward/backward does not support BFloat16")
     torch.manual_seed(0)
