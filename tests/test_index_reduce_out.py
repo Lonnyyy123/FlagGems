@@ -65,6 +65,7 @@ def test_index_reduce_out_resizes(reduce, include_self):
     assert result is out
     assert out.shape == inp.shape
     assert out.dtype == inp.dtype
+    assert out.device == inp.device
     utils.gems_assert_close(out, ref_out, dtype=inp.dtype, reduce_dim=source.size(1))
 
 
@@ -83,12 +84,18 @@ def test_index_reduce_out_preserves_storage(reduce):
 
     assert result is out
     assert out.data_ptr() == pointer
+    assert out.device == inp.device
+    assert out.dtype == inp.dtype
+    assert out.shape == inp.shape
     utils.gems_assert_close(out, ref_out, dtype=inp.dtype, reduce_dim=source.size(1))
 
 
 @pytest.mark.index_reduce_out
 def test_index_reduce_out_aliases_input():
     inp, index, source = _inputs()
+    expected_device = inp.device
+    expected_dtype = inp.dtype
+    expected_shape = inp.shape
     ref_inp = utils.to_reference(inp.clone(), True)
     torch.index_reduce(
         ref_inp,
@@ -102,6 +109,9 @@ def test_index_reduce_out_aliases_input():
     result = flag_gems.index_reduce_out(inp, 1, index, source, "mean", out=inp)
 
     assert result is inp
+    assert inp.device == expected_device
+    assert inp.dtype == expected_dtype
+    assert inp.shape == expected_shape
     utils.gems_assert_close(inp, ref_inp, dtype=inp.dtype, reduce_dim=source.size(1))
 
 
