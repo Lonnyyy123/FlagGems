@@ -15,6 +15,8 @@
 import pytest
 import torch
 
+import flag_gems
+
 from . import base
 from .generated_operator_utils import OperatorBenchmark
 
@@ -30,6 +32,8 @@ def _case_fn(shape, dtype):
 
 
 def _build_inputs_fn(plan, dtype, device):
+    if flag_gems.vendor_name == "enflame" and dtype == torch.float64:
+        pytest.skip("Enflame Float64 storage loses adjacent-double nextafter values")
     (shape,) = plan.builder_args
     torch.manual_seed(0)
     return (
