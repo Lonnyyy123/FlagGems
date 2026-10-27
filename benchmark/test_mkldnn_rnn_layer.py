@@ -76,6 +76,8 @@ class _H800Latency:
         if op["native_api"] != "ops.mkldnn_rnn_layer":
             raise ValueError("Expected ops-baseline native LSTM composition")
         task = data["_collection"]["tasks"]["mkldnn_rnn_layer"]
+        if task["status"] != "completed" or task["returncode"] != 0:
+            raise ValueError("Expected a completed H800 LSTM collection")
         return (
             data,
             op["shapes"],
@@ -114,6 +116,14 @@ class _H800Latency:
         )
         source = environment["source"]
         commit = source["git_commit"]
+        validity = row.get("metric_validity")
+        measured = (
+            validity.get("T_us") == "measured"
+            and validity.get("latency_ms") == "measured"
+            if validity is not None
+            else environment["run"].get("ncu_enabled") is False
+            and environment["run"].get("selected_ops") == ["mkldnn_rnn_layer"]
+        )
         if (
             environment["hardware"]["gpu"]["name"] != "NVIDIA H800"
             or environment["run"]["repo"] != "pytorch"
@@ -122,8 +132,7 @@ class _H800Latency:
             or len(commit) != 40
             or any(c not in "0123456789abcdef" for c in commit)
             or not environment["software"]["packages"]["torch"]
-            or row["metric_validity"].get("T_us") != "measured"
-            or row["metric_validity"].get("latency_ms") != "measured"
+            or not measured
         ):
             raise ValueError(
                 "H800 latency needs measured timing and its actual environment"
@@ -146,6 +155,8 @@ class _H800Latency:
             collection_origin=origin,
             ncu_status=row.get("ncu_status"),
             ncu_reason=row.get("ncu_reason"),
+            ncu_enabled=environment["run"]["ncu_enabled"],
+            latency_validity="measured",
             target_timing_mode=base.Config.mode.value,
         )
         return latency
