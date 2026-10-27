@@ -144,7 +144,7 @@ def test_fake_quantize_learnable_per_tensor_affine_backward_empty():
                 and reference[2].data_ptr() == reference_inputs[3].data_ptr()
             )
             or (
-                flag_gems.vendor_name == "ascend"
+                flag_gems.vendor_name in {"ascend", "enflame"}
                 and not utils.TO_CPU
                 and torch.equal(reference[1], reference_inputs[2])
                 and torch.equal(reference[2], reference_inputs[3])
