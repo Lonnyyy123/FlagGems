@@ -30,8 +30,10 @@ def test_cudnn_batch_norm_backward(shape, dtype, affine):
     C = shape[1]
     # Create input and weight tensors (no requires_grad for backward kernel test)
     res_inp = torch.randn(size=shape, dtype=dtype, device=flag_gems.device)
-    # Always create weight for cudnn_batch_norm_backward
-    res_weight = torch.ones(size=(C,), dtype=torch.float32, device=flag_gems.device)
+    # Native Half needs FP32 affine/stat parameters. Preserve the original
+    # BF16 contract for its CPU oracle; the unavailable CUDA BF16 API is skipped.
+    param_dtype = torch.float32 if dtype == torch.float16 else dtype
+    res_weight = torch.ones(size=(C,), dtype=param_dtype, device=flag_gems.device)
     # For bias, we always create one but only check gradients when affine=True
     res_bias = torch.ones(size=(C,), dtype=dtype, device=flag_gems.device)
 
@@ -53,8 +55,8 @@ def test_cudnn_batch_norm_backward(shape, dtype, affine):
             res_inp_f32.cpu(), res_weight_f32.cpu(), res_bias_f32.cpu(),
             None, None, train, 0.1, eps
         )
-        save_mean = save_mean.to(res_inp.device)
-        save_invstd = save_invstd.to(res_inp.device)
+        save_mean = save_mean.to(device=res_inp.device, dtype=param_dtype)
+        save_invstd = save_invstd.to(device=res_inp.device, dtype=param_dtype)
         reserve_space = torch.empty(0, dtype=torch.uint8, device=res_inp.device)
     else:
         _, save_mean, save_invstd, reserve_space = torch.ops.aten.cudnn_batch_norm(
@@ -94,7 +96,7 @@ def test_cudnn_batch_norm_backward(shape, dtype, affine):
 
     expected_device = res_inp.device
     expected_shapes = (tuple(shape), (C,), (C,))
-    expected_dtypes = (dtype, torch.float32, torch.float32)
+    expected_dtypes = (dtype, param_dtype, param_dtype)
     # Run FlagGems implementation
     (
         res_in_grad,
@@ -124,8 +126,8 @@ def test_cudnn_batch_norm_backward(shape, dtype, affine):
     # Only check weight and bias gradients when affine=True
     if affine:
         utils.gems_assert_close(
-            res_weight_grad, ref_weight_grad, torch.float32, reduce_dim=reduce_dim
+            res_weight_grad, ref_weight_grad, param_dtype, reduce_dim=reduce_dim
         )
         utils.gems_assert_close(
-            res_bias_grad, ref_bias_grad, torch.float32, reduce_dim=reduce_dim
+            res_bias_grad, ref_bias_grad, param_dtype, reduce_dim=reduce_dim
         )
