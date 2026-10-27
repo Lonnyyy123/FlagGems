@@ -36,6 +36,8 @@ _TEST_DTYPES = (
 
 
 _H800_COLLECTION_SOURCE = "95847c9f7040152cb774fe56183eb280c5764c97"
+_H800_ARTIFACT_SHA256 = "8a97ee0f31d6c60a0b9597394af3465715e3a7fc94aeae5a65e22538f83b8a21"
+_H800_PROVENANCE_SHA256 = "46ade64c01e38972f8e79974f070bcba29ee9588862ac463c6c63f984f6cc267"
 
 
 @dataclass
@@ -79,7 +81,9 @@ class LuWithInfoBenchmark(base.Benchmark):
         task = data["_collection"]["tasks"][key]
         environment = data["_environments"][str(task["device"])]
         if (
-            proof["status"] != "PASS_VERIFIED_NATIVE_H800_LU_CORE_SNAPSHOT"
+            hashlib.sha256(payload).hexdigest() != _H800_ARTIFACT_SHA256
+            or hashlib.sha256(sidecar_payload).hexdigest() != _H800_PROVENANCE_SHA256
+            or proof["status"] != "PASS_VERIFIED_NATIVE_H800_LU_CORE_SNAPSHOT"
             or proof["artifact_sha256"] != hashlib.sha256(payload).hexdigest()
             or proof["collection_source_commit"] != _H800_COLLECTION_SOURCE
             or proof["source_clean"] is not True
