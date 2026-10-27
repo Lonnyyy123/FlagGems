@@ -30,6 +30,8 @@ MNK_SHAPES = [
 
 
 def _reference_out(inp, coefficients, out):
+    # Preserve the operand dtype: ATen rounds each accumulated term in out.
+    # A promoted reference changes that rounding contract.
     return torch.ops.aten._compute_linear_combination.out(
         inp, coefficients, out=out
     )
@@ -45,8 +47,8 @@ def test_compute_linear_combination_out(m, n, k, dtype):
     coefficients = torch.randn((m, n), dtype=dtype, device=flag_gems.device)
     saved_inp = inp.clone()
     saved_coefficients = coefficients.clone()
-    ref_inp = utils.to_reference(inp, True)
-    ref_coefficients = utils.to_reference(coefficients, True)
+    ref_inp = utils.to_reference(inp, False)
+    ref_coefficients = utils.to_reference(coefficients, False)
     ref_out = torch.zeros((m, k), dtype=ref_inp.dtype, device=ref_inp.device)
     out = torch.zeros((m, k), dtype=dtype, device=flag_gems.device)
     out_pointer = out.data_ptr()
@@ -75,8 +77,8 @@ def test_compute_linear_combination_out_resize(dtype):
     m, n, k = 3, 4, 5
     inp = torch.randn((n, k), dtype=dtype, device=flag_gems.device)
     coefficients = torch.randn((m, n), dtype=dtype, device=flag_gems.device)
-    ref_inp = utils.to_reference(inp, True)
-    ref_coefficients = utils.to_reference(coefficients, True)
+    ref_inp = utils.to_reference(inp, False)
+    ref_coefficients = utils.to_reference(coefficients, False)
     ref_out = torch.empty((0,), dtype=ref_inp.dtype, device=ref_inp.device)
     out = torch.empty((0,), dtype=dtype, device=flag_gems.device)
 
@@ -103,8 +105,8 @@ def test_compute_linear_combination_out_noncontiguous(dtype):
     m, n, k = 5, 7, 9
     inp = torch.randn((n, k), dtype=dtype, device=flag_gems.device)
     coefficients = torch.randn((m, n), dtype=dtype, device=flag_gems.device)
-    ref_inp = utils.to_reference(inp, True)
-    ref_coefficients = utils.to_reference(coefficients, True)
+    ref_inp = utils.to_reference(inp, False)
+    ref_coefficients = utils.to_reference(coefficients, False)
     ref_out = torch.zeros((k, m), dtype=ref_inp.dtype, device=ref_inp.device).t()
     out = torch.zeros((k, m), dtype=dtype, device=flag_gems.device).t()
     out_pointer = out.data_ptr()
