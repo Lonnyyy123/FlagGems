@@ -606,7 +606,10 @@ def test__flash_attention_forward_dropout_debug_mask(dropout_p):
     assert len(actual) == len(replay) == 5
     utils.gems_assert_equal(actual[0].cpu(), replay[0].cpu())
     utils.gems_assert_equal(actual[1].cpu(), replay[1].cpu())
-    for result, repeated in zip(actual[2:], replay[2:]):
+    # Native output 3 is an unused scalar with unspecified payload. Its ABI
+    # is checked above; replay equality applies to RNG state and debug mask.
+    for index in (2, 4):
+        result, repeated = actual[index], replay[index]
         assert result.shape == repeated.shape
         assert result.dtype == repeated.dtype
         if result.numel():
