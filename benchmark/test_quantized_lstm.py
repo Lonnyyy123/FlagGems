@@ -20,7 +20,21 @@ from .generated_operator_utils import OperatorBenchmark
 SHAPES = [(4, 32, 256, 256), (4, 64, 512, 512), (8, 64, 256, 256)]
 
 
-NATIVE_BASELINE_RECIPE = {'source_commit': 'ac9a1f703757537a3d54cc1ac1febeca410316c0', 'source_file': 'benchmark/test_quantized_lstm.py', 'seed': 0, 'quantized_engine': 'fbgemm', 'weight_distribution': 'randn * 0.3', 'bias_distribution': 'randn * 0.1', 'weight_qscheme': 'per_tensor_affine', 'weight_qdtype': 'torch.qint8', 'weight_zero_point': 0, 'weight_scale': 'max(abs(weight).max().item() / 127, 1e-8)', 'rounding': 'linear_prepack -> linear_unpack -> dequantize -> input dtype', 'native_expression': 'torch._VF.lstm(value, hx, deq, *flags)', 'packed_params': 'CPU ScriptObjects used by candidate only, excluded from original floating native reference'}
+NATIVE_BASELINE_RECIPE = {
+    "source_commit": "ac9a1f703757537a3d54cc1ac1febeca410316c0",
+    "source_file": "benchmark/test_quantized_lstm.py",
+    "seed": 0,
+    "quantized_engine": "fbgemm",
+    "weight_distribution": "randn * 0.3",
+    "bias_distribution": "randn * 0.1",
+    "weight_qscheme": "per_tensor_affine",
+    "weight_qdtype": "torch.qint8",
+    "weight_zero_point": 0,
+    "weight_scale": "max(abs(weight).max().item() / 127, 1e-8)",
+    "rounding": "linear_prepack -> linear_unpack -> dequantize -> input dtype",
+    "native_expression": "torch._VF.lstm(value, hx, deq, *flags)",
+    "packed_params": "CPU ScriptObjects used by candidate only, excluded from original floating native reference"
+}
 
 
 @dataclass
