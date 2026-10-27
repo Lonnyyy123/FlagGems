@@ -55,6 +55,13 @@ def _make_well_conditioned(shape, dtype, device):
     return matrix.to(dtype=dtype, device=device)
 
 
+def _assert_output_metadata(result, inp):
+    # Observe the target ABI before numerical comparison can move to CPU.
+    assert result.device == inp.device
+    assert result.dtype == inp.dtype
+    assert result.shape == (*inp.shape[:-2], inp.shape[-1], inp.shape[-2])
+
+
 @pytest.mark.pinverse
 @pytest.mark.parametrize("dtype", DTYPES)
 @pytest.mark.parametrize("shape", SHAPES)
@@ -64,6 +71,7 @@ def test_pinverse(shape, dtype):
     reference = torch.pinverse(ref_inp)
 
     result = flag_gems.pinverse(inp)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_close(result, reference, dtype, atol=PINVERSE_ATOL[dtype])
     assert result.is_contiguous()
 
@@ -74,6 +82,7 @@ def test_pinverse_rcond():
     reference = torch.pinverse(utils.to_reference(inp, True), rcond=1e-4)
 
     result = flag_gems.pinverse(inp, rcond=1e-4)
+    _assert_output_metadata(result, inp)
 
     utils.gems_assert_close(result, reference, inp.dtype, atol=PINVERSE_ATOL[inp.dtype])
 
@@ -84,6 +93,7 @@ def test_pinverse_batch_above_cuda_grid_y_limit():
     inp = inp.expand(65536, 2, 2).contiguous()
     reference = torch.pinverse(utils.to_reference(inp, True))
     result = flag_gems.pinverse(inp)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_close(result, reference, inp.dtype)
 
 
@@ -95,6 +105,7 @@ def test_pinverse_noncontiguous():
     reference = torch.pinverse(utils.to_reference(inp, True))
 
     result = flag_gems.pinverse(inp)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_close(result, reference, inp.dtype, atol=PINVERSE_ATOL[inp.dtype])
 
 
@@ -105,6 +116,7 @@ def test_pinverse_empty(shape):
     reference = torch.pinverse(utils.to_reference(inp))
 
     result = flag_gems.pinverse(inp)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_equal(result, reference)
     assert result.stride() == reference.stride()
 
@@ -122,6 +134,7 @@ def test_pinverse_rcond_and_rank_deficiency(rcond):
     reference = torch.pinverse(utils.to_reference(inp, True), rcond=rcond)
 
     result = flag_gems.pinverse(inp, rcond=rcond)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_close(result, reference, inp.dtype, atol=5e-3)
 
 
@@ -141,14 +154,19 @@ def test_pinverse_nonfinite(value, rcond):
         with pytest.raises(NotImplementedError, match="negative rcond"):
             flag_gems.pinverse(inp, rcond=rcond)
         return
-    if flag_gems.vendor_name == "kunlunxin" and not utils.TO_CPU and value != value:
-        pytest.skip("Kunlunxin native SVD reference rejects NaN input")
+    if (
+        flag_gems.vendor_name in {"kunlunxin", "enflame"}
+        and not utils.TO_CPU
+        and value != value
+    ):
+        pytest.skip(f"{flag_gems.vendor_name} native SVD reference rejects NaN input")
     ref_inp = utils.to_reference(inp)
     if ref_inp.device.type == "cpu" and (torch.isnan(ref_inp).any() or rcond < 0):
         pytest.skip("CPU and CUDA SVD differ for this non-finite input")
     reference = torch.pinverse(ref_inp, rcond=rcond)
 
     result = flag_gems.pinverse(inp, rcond=rcond)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_equal(result, reference, equal_nan=True)
 
 
@@ -187,6 +205,7 @@ def test_pinverse_large_multitile_and_moore_penrose(shape):
     inp = _make_well_conditioned(shape, torch.float32, flag_gems.device)
     reference = torch.pinverse(utils.to_reference(inp, True), rcond=1e-5)
     result = flag_gems.pinverse(inp, rcond=1e-5)
+    _assert_output_metadata(result, inp)
     utils.gems_assert_close(result, reference, torch.float32, atol=5e-2)
 
     reconstructed = inp @ result @ inp
@@ -213,6 +232,11 @@ def test_pinverse_non_diagonal_difficult_inputs(case):
 
     reference = torch.pinverse(utils.to_reference(inp, True), rcond=rcond)
     result = flag_gems.pinverse(inp, rcond=rcond)
+    _assert_output_metadata(result, inp)
     torch.testing.assert_close(
-        utils.to_cpu(result, reference), reference, atol=1e-1, rtol=2e-2
+        utils.to_cpu(result, reference),
+        reference,
+        atol=1e-1,
+        rtol=2e-2,
+        check_dtype=False,
     )
