@@ -34,14 +34,19 @@ def _native_reference(inp, exponent):
     return torch.ops.aten.ldexp.Tensor(inp, exponent)
 
 
-def _assert_ldexp_result_abi(result, inp, exponent):
+def _ldexp_result_abi(inp, exponent):
     expected_dtype = torch.result_type(inp, exponent)
     if not (expected_dtype.is_floating_point or expected_dtype.is_complex):
         expected_dtype = torch.get_default_dtype()
-    assert isinstance(result, torch.Tensor)
-    assert result.device == inp.device
-    assert result.dtype == expected_dtype
-    assert result.shape == torch.broadcast_shapes(inp.shape, exponent.shape)
+    return inp.device, expected_dtype, torch.broadcast_shapes(inp.shape, exponent.shape)
+
+
+def _assert_tensor_abi(actual, abi):
+    device, dtype, shape = abi
+    assert isinstance(actual, torch.Tensor)
+    assert actual.device == device
+    assert actual.dtype == dtype
+    assert actual.shape == shape
 
 
 @pytest.mark.ldexp
@@ -55,8 +60,9 @@ def test_ldexp(shape, dtype):
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
 
+    result_abi = _ldexp_result_abi(inp, exponent)
     result = flag_gems.ldexp(inp, exponent)
-    _assert_ldexp_result_abi(result, inp, exponent)
+    _assert_tensor_abi(result, result_abi)
 
     assert result.shape == reference.shape
     assert result.dtype == inp.dtype
@@ -74,8 +80,9 @@ def test_ldexp_broadcast_noncontiguous(dtype):
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
 
+    result_abi = _ldexp_result_abi(inp, exponent)
     result = flag_gems.ldexp(inp, exponent)
-    _assert_ldexp_result_abi(result, inp, exponent)
+    _assert_tensor_abi(result, result_abi)
 
     utils.gems_assert_close(result, reference, result.dtype)
 
@@ -105,8 +112,9 @@ def test_ldexp_dtype_promotion(self_dtype, other_dtype, expected_dtype):
         utils.to_reference(inp, False), utils.to_reference(exponent, False)
     )
 
+    result_abi = _ldexp_result_abi(inp, exponent)
     result = flag_gems.ldexp(inp, exponent)
-    _assert_ldexp_result_abi(result, inp, exponent)
+    _assert_tensor_abi(result, result_abi)
 
     assert result.dtype == expected_dtype
     utils.gems_assert_close(result, reference, expected_dtype)
@@ -125,8 +133,9 @@ def test_ldexp_special_values(dtype):
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
 
+    result_abi = _ldexp_result_abi(inp, exponent)
     result = flag_gems.ldexp(inp, exponent)
-    _assert_ldexp_result_abi(result, inp, exponent)
+    _assert_tensor_abi(result, result_abi)
 
     utils.gems_assert_close(result, reference, dtype, equal_nan=True)
 
@@ -143,12 +152,12 @@ def test_ldexp_autograd():
     ref_out = _native_reference(ref_inp, ref_exponent)
     (ref_input_grad,) = torch.autograd.grad(ref_out, ref_inp, ref_grad)
 
+    input_grad_abi = (inp.device, inp.dtype, inp.shape)
+    result_abi = _ldexp_result_abi(inp, exponent)
     result = flag_gems.ldexp(inp, exponent)
-    _assert_ldexp_result_abi(result, inp, exponent)
+    _assert_tensor_abi(result, result_abi)
     (input_grad,) = torch.autograd.grad(result, inp, grad)
-    assert input_grad.device == inp.device
-    assert input_grad.dtype == inp.dtype
-    assert input_grad.shape == inp.shape
+    _assert_tensor_abi(input_grad, input_grad_abi)
 
     utils.gems_assert_close(result, ref_out, result.dtype)
     utils.gems_assert_close(input_grad, ref_input_grad, input_grad.dtype)
