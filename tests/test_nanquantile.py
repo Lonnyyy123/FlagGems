@@ -221,7 +221,10 @@ def test_nanquantile_maximum_reduction_one_valid(valid_count):
         utils.to_reference(inp, True), utils.to_reference(q, True)
     )
     result = flag_gems.nanquantile(inp, q)
-    utils.gems_assert_equal(result, reference, equal_nan=True)
+    assert result.dtype == inp.dtype
+    assert result.device == inp.device
+    assert result.shape == reference.shape
+    utils.gems_assert_equal(result.to(reference.dtype), reference, equal_nan=True)
 
 
 @pytest.mark.nanquantile
