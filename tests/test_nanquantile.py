@@ -62,6 +62,8 @@ def _assert_close(result, reference, dtype, reduction_size):
 @pytest.mark.parametrize("interpolation", INTERPOLATIONS)
 @pytest.mark.parametrize("dim, keepdim", [(None, False), (1, False), (-1, True)])
 def test_nanquantile_tensor(dtype, interpolation, dim, keepdim):
+    if flag_gems.vendor_name == "enflame" and dtype == torch.float64:
+        pytest.skip("Enflame Float64 storage loses adjacent-double values")
     inp = _input((7, 33), dtype).T
     q = torch.tensor([0.0, 0.2, 0.5, 0.8, 1.0], dtype=dtype, device=inp.device)
     ref_inp, ref_q = utils.to_reference(inp, True), utils.to_reference(q, True)
@@ -140,6 +142,8 @@ def _scalar_out_input(shape, dtype):
 @pytest.mark.parametrize("dtype", DTYPES)
 @pytest.mark.parametrize("interpolation", INTERPOLATIONS)
 def test_nanquantile_scalar_out(dtype, interpolation):
+    if flag_gems.vendor_name == "enflame" and dtype == torch.float64:
+        pytest.skip("Enflame Float64 storage loses adjacent-double values")
     if dtype == torch.float64 and not cfg.TO_CPU:
         if flag_gems.vendor_name == "kunlunxin":
             pytest.skip(
