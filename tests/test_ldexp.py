@@ -79,6 +79,8 @@ def test_ldexp_broadcast_noncontiguous(dtype):
     ],
 )
 def test_ldexp_dtype_promotion(self_dtype, other_dtype, expected_dtype):
+    if flag_gems.vendor_name == "enflame" and expected_dtype == torch.float64:
+        pytest.skip("Enflame Float64 storage loses adjacent-double values")
     torch.manual_seed(0)
     if self_dtype == torch.bool:
         inp = torch.randint(0, 2, (37,), device=flag_gems.device).bool()
