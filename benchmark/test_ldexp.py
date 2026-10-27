@@ -28,10 +28,13 @@ import flag_gems
 from . import base, consts
 from .generated_operator_utils import OperatorBenchmark
 
-_H800_SHA256 = "ed09649e4b5e64b94c6c610cc01422117f792ee8316524f3222711e4c5f3f4c3"
-_PUBLISHED_COMMIT = "7d43707757d04910585b0b97f9bdcb56faa1e56e"
+_H800_SHA256 = "d40a2eee1084c880663b207592d50934a32a85a6036405b4f18bca226a6bacd0"
+_PUBLISHED_COMMIT = "60933ace321f266175a3aef14365db2302b7d4d5"
 _COLLECTOR_COMMIT = "ccc0508d81b3b10283a62dab73fc05e256093848"
 _BENCHMARK_COMMIT = "9d57a23b4386bd669152a935fe88a96db907da7c"
+_CURRENT_CORE_SOURCE = "ac9a1f703757537a3d54cc1ac1febeca410316c0"
+_SUPPLEMENT_SOURCE = "ce1585f1dd7308bf82f42e4b084ead74b8f259e0"
+_CURRENT_EXTRA_SHAPES = {(1073741824,), (64, 64), (64, 512, 512), (1024, 1024, 1024)}
 
 
 @dataclass
@@ -88,8 +91,10 @@ class LdexpBenchmark(base.BinaryPointwiseBenchmark, OperatorBenchmark):
         ):
             raise ValueError("Incomplete H800 native collection provenance")
         records = data[self.op_name]["shapes"]
-        if sum(len(ds) for ds in records.values()) != 15:
-            raise ValueError("Expected all original fifteen shape/dtype records")
+        if sum(len(ds) for ds in records.values()) != 27:
+            raise ValueError(
+                "Expected legacy fifteen plus twelve current-core H800 records"
+            )
         return records, dict(
             kind="external_nvidia",
             artifact=str(path),
@@ -147,12 +152,22 @@ class LdexpBenchmark(base.BinaryPointwiseBenchmark, OperatorBenchmark):
                 args=[describe(inp), describe(exponent)],
                 kwargs={k: describe(v) for k, v in kwargs.items()},
             ),
-            source_commit=_BENCHMARK_COMMIT,
+            source_commit=(
+                _CURRENT_CORE_SOURCE
+                if tuple(inp.shape) in _CURRENT_EXTRA_SHAPES
+                else _BENCHMARK_COMMIT
+            ),
             benchmark="benchmark/test_ldexp.py",
             descriptor=list(inp.shape),
             scope="core",
             variant=0,
         )
+        if tuple(inp.shape) in _CURRENT_EXTRA_SHAPES:
+            config["input_recipe"] = {
+                "seed": 0,
+                "input": "torch.randn",
+                "exponent": "torch.randint(-8,9,int32)",
+            }
         records, source = self._external_records
         matches = [
             record
@@ -165,6 +180,34 @@ class LdexpBenchmark(base.BinaryPointwiseBenchmark, OperatorBenchmark):
                 "Expected one H800 record matching the complete actual input config"
             )
         record = matches[0]
+        origin = record.get("collection_origin")
+        if tuple(inp.shape) in _CURRENT_EXTRA_SHAPES:
+            if not isinstance(origin, dict):
+                raise ValueError(
+                    "Current-core record lacks original collection provenance"
+                )
+            environment = origin["environment"]
+            if (
+                environment["hardware"]["gpu"]["name"] != "NVIDIA H800"
+                or environment["source"]["git_commit"] != _SUPPLEMENT_SOURCE
+                or environment["source"]["git_dirty"] is not False
+                or environment["run"]["ncu_enabled"] is not False
+                or origin["task"]["status"] != "completed"
+                or origin["task"]["returncode"] != 0
+            ):
+                raise ValueError(
+                    "Current-core data must come from the clean H800 supplement"
+                )
+            source = {
+                **source,
+                "collection_task": origin["task"],
+                "device_environment": environment,
+                "collection_origin": origin,
+            }
+        elif origin is not None:
+            raise ValueError(
+                "Unexpected replacement provenance for a preserved legacy record"
+            )
         latency = record["T_us"]
         if (
             isinstance(latency, bool)
