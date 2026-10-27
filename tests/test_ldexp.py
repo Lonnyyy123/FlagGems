@@ -20,6 +20,15 @@ import flag_gems
 from . import accuracy_utils as utils
 
 
+def _native_reference(inp, exponent):
+    # Enflame has no ldexp DispatchStub kernel. Keep the existing promoted
+    # reference values and autograd chain while executing native CPU ATen.
+    if flag_gems.vendor_name == "enflame":
+        result = torch.ops.aten.ldexp.Tensor(inp.to("cpu"), exponent.to("cpu"))
+        return result.to(inp.device)
+    return torch.ops.aten.ldexp.Tensor(inp, exponent)
+
+
 @pytest.mark.ldexp
 @pytest.mark.parametrize("shape", [*utils.POINTWISE_SHAPES, (2, 0, 3)])
 @pytest.mark.parametrize("dtype", utils.FLOAT_DTYPES)
@@ -27,14 +36,14 @@ def test_ldexp(shape, dtype):
     torch.manual_seed(0)
     inp = torch.randn(shape, dtype=dtype, device=flag_gems.device)
     exponent = torch.randint(-8, 9, shape, dtype=torch.int32, device=inp.device)
-    reference = torch.ops.aten.ldexp.Tensor(
+    reference = _native_reference(
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
 
     result = flag_gems.ldexp(inp, exponent)
 
     assert result.shape == reference.shape
-    assert result.dtype == reference.dtype
+    assert result.dtype == inp.dtype
     utils.gems_assert_close(result, reference, result.dtype)
 
 
@@ -45,7 +54,7 @@ def test_ldexp_broadcast_noncontiguous(dtype):
     inp = torch.randn((19, 7), dtype=dtype, device=flag_gems.device).T
     exponent = torch.randint(-4, 5, (19,), dtype=torch.int64, device=inp.device)
     assert not inp.is_contiguous()
-    reference = torch.ops.aten.ldexp.Tensor(
+    reference = _native_reference(
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
 
@@ -73,7 +82,7 @@ def test_ldexp_dtype_promotion(self_dtype, other_dtype, expected_dtype):
     else:
         inp = torch.randint(-8, 9, (37,), dtype=self_dtype, device=flag_gems.device)
     exponent = torch.randint(-4, 5, (37,), device=inp.device).to(other_dtype)
-    reference = torch.ops.aten.ldexp.Tensor(
+    reference = _native_reference(
         utils.to_reference(inp, False), utils.to_reference(exponent, False)
     )
 
@@ -92,7 +101,7 @@ def test_ldexp_special_values(dtype):
         device=flag_gems.device,
     )
     exponent = torch.tensor([128, -128, 0, 1, -1, 0, 2], device=inp.device)
-    reference = torch.ops.aten.ldexp.Tensor(
+    reference = _native_reference(
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
 
@@ -110,7 +119,7 @@ def test_ldexp_autograd():
     ref_inp = utils.to_reference(inp, True).requires_grad_(True)
     ref_exponent = utils.to_reference(exponent, False)
     ref_grad = utils.to_reference(grad, True)
-    ref_out = torch.ops.aten.ldexp.Tensor(ref_inp, ref_exponent)
+    ref_out = _native_reference(ref_inp, ref_exponent)
     (ref_input_grad,) = torch.autograd.grad(ref_out, ref_inp, ref_grad)
 
     result = flag_gems.ldexp(inp, exponent)
@@ -128,7 +137,7 @@ def test_ldexp_out(shape, dtype):
     inp = torch.randn(shape, dtype=dtype, device=flag_gems.device)
     exponent = torch.randint(-8, 9, shape, dtype=torch.int32, device=inp.device)
     inp_before, exponent_before = inp.clone(), exponent.clone()
-    reference = torch.ops.aten.ldexp.Tensor(
+    reference = _native_reference(
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
     out = torch.empty_like(inp)
@@ -153,7 +162,7 @@ def test_ldexp_out_broadcast_noncontiguous(dtype):
     torch.manual_seed(0)
     inp = torch.randn((19, 7), dtype=dtype, device=flag_gems.device).T
     exponent = torch.randint(-4, 5, (19,), dtype=torch.int64, device=inp.device)
-    reference = torch.ops.aten.ldexp.Tensor(
+    reference = _native_reference(
         utils.to_reference(inp, True), utils.to_reference(exponent, False)
     )
     backing = torch.full((7, 38), 123, dtype=dtype, device=inp.device)
