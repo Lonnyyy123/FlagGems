@@ -21,9 +21,14 @@ from . import accuracy_utils as utils
 
 
 def _native_reference(inp, exponent):
-    # Enflame has no ldexp DispatchStub kernel. Keep the existing promoted
-    # reference values and autograd chain while executing native CPU ATen.
-    if flag_gems.vendor_name == "enflame":
+    # Enflame lacks the floating-input/integer-exponent DispatchStub path.
+    # Bool/integer input and floating-exponent paths keep their native device.
+    # Preserve the existing promoted values and autograd chain for CPU ATen.
+    if (
+        flag_gems.vendor_name == "enflame"
+        and inp.is_floating_point()
+        and not exponent.is_floating_point()
+    ):
         result = torch.ops.aten.ldexp.Tensor(inp.to("cpu"), exponent.to("cpu"))
         return result.to(inp.device)
     return torch.ops.aten.ldexp.Tensor(inp, exponent)
