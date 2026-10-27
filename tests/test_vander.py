@@ -35,6 +35,10 @@ def _vander_copy(value, device):
 def _vander_random(shape, dtype):
     if flag_gems.vendor_name == "enflame" and dtype in (torch.float64, torch.complex128):
         pytest.skip("Enflame target transfer does not retain genuine wide-component precision")
+    if flag_gems.vendor_name == "enflame" and dtype == torch.complex64:
+        # The target complex randn constructor aborts; preserve its distribution
+        # with a CPU-generator recipe, then transfer a genuine Complex64 tensor.
+        return torch.randn(shape, dtype=dtype, device="cpu").to(flag_gems.device)
     if flag_gems.vendor_name == "kunlunxin" and dtype in (
         torch.float64,
         torch.complex128,
