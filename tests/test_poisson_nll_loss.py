@@ -337,7 +337,7 @@ def test_poisson_nll_loss_complex(dtype, log_input, reduction, case):
     assert result.device == inp.device
     assert result.dtype == reference.dtype
     assert result.shape == reference.shape
-    if flag_gems.vendor_name == "ascend" or (
+    if flag_gems.vendor_name in ("ascend", "enflame") or (
         flag_gems.vendor_name == "kunlunxin" and result.is_complex()
     ):
         result, reference = result.cpu(), reference.cpu()
