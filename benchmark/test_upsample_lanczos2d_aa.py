@@ -196,6 +196,12 @@ def _vec_h800_records():
 
 
 class UpsampleLanczosVecBenchmark(UpsampleLanczosBenchmark):
+    def _candidate_call(self):
+        op, dispatch, overridden = super()._candidate_call()
+        if flag_gems.vendor_name == "enflame" and op is self.torch_op:
+            raise RuntimeError("Enflame Lanczos vec requires an explicit candidate")
+        return op, dispatch, overridden
+
     def get_latency(self, op, *args, **kwargs):
         if flag_gems.vendor_name != "enflame" or op is not self.torch_op:
             return super().get_latency(op, *args, **kwargs)
