@@ -220,7 +220,11 @@ def _adagrad_cpu_apply(params, grads, state_sums, state_steps, **kwargs):
 @pytest.fixture(autouse=True)
 def _adagrad_target_width(request):
     dtype = getattr(getattr(request.node, "callspec", None), "params", {}).get("dtype")
-    if flag_gems.vendor_name == "enflame" and dtype == torch.float64:
+    if (
+        flag_gems.vendor_name == "enflame"
+        and dtype == torch.float64
+        and request.node.originalname != "test_fused_adagrad__empty"
+    ):
         pytest.skip("Enflame target Float64 transfer loses genuine payload precision")
 
 
