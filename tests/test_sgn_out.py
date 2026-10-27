@@ -75,10 +75,11 @@ def _to_reference(inp):
 
 
 def _assert_sgn_equal(result, reference, dtype):
+    assert result.dtype == dtype
     if dtype in utils.COMPLEX_DTYPES:
         utils.gems_assert_close(result, reference, dtype, equal_nan=True)
     else:
-        utils.gems_assert_equal(result, reference, equal_nan=True)
+        utils.gems_assert_equal(result, reference.to(dtype), equal_nan=True)
 
 
 def _assert_matches_torch(inp, out=None):
@@ -108,6 +109,9 @@ def _assert_matches_torch(inp, out=None):
         torch.sgn(ref_inp, out=ref_out)
         result = flag_gems.sgn_out(inp, out=out)
         assert result is out
+        assert result.device == inp.device
+        assert result.dtype == inp.dtype
+        assert result.shape == inp.shape
     _assert_sgn_equal(result, ref_out, inp.dtype)
 
 

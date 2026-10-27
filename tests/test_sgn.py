@@ -105,6 +105,9 @@ def _assert_matches_torch(inp, out=None):
         torch.sgn(ref_inp, out=ref_out)
         result = flag_gems.sgn_out(inp, out=out)
         assert result is out
+        assert result.device == inp.device
+        assert result.dtype == inp.dtype
+        assert result.shape == inp.shape
 
     _assert_sgn_equal(result, ref_out, inp.dtype)
 
