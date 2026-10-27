@@ -101,8 +101,15 @@ def _unpack_no_pivot(lu):
     return lower, lu[..., :k, :].triu()
 
 
-def _assert_reconstruction(inp, lu, pivots, pivot, dtype):
+def _assert_reconstruction(inp, lu, pivots, pivot, dtype, expected_device):
+    assert lu.device == expected_device and pivots.device == expected_device
+    assert lu.dtype == dtype
     k = min(inp.shape[-2:])
+    # Reconstruct the frozen factor values on CPU in FP64: target FP32
+    # matmul may use TF32 and invalidate an otherwise accurate LU packet.
+    # Keep the original output dtype and comparison tolerance.
+    lu = lu.detach().cpu().to(torch.float64)
+    pivots = pivots.cpu()
     if pivot:
         p, lower, upper = torch.lu_unpack(lu, pivots)
         reconstructed = p @ lower @ upper
@@ -110,7 +117,7 @@ def _assert_reconstruction(inp, lu, pivots, pivot, dtype):
         lower, upper = _unpack_no_pivot(lu)
         reconstructed = lower @ upper
     utils.gems_assert_close(
-        reconstructed, utils.to_reference(inp, True), dtype, reduce_dim=k
+        reconstructed.to(dtype), inp.detach().cpu().to(dtype), dtype, reduce_dim=k
     )
 
 
@@ -135,6 +142,7 @@ def test_lu_with_info(shape, dtype, pivot):
     ref_lu, ref_pivots, ref_info = _reference_lu(
         utils.to_reference(inp, True), pivot=pivot, check_errors=False
     )
+    expected_device = inp.device
     lu, pivots, info = flag_gems._lu_with_info(inp, pivot=pivot, check_errors=False)
 
     assert lu.shape == ref_lu.shape and lu.dtype == inp.dtype
@@ -144,7 +152,7 @@ def test_lu_with_info(shape, dtype, pivot):
     assert (info >= 0).all() and (info <= min(shape[-2:])).all()
     if pivots.numel():
         assert (pivots >= 1).all() and (pivots <= shape[-2]).all()
-    _assert_reconstruction(inp, lu, pivots, pivot, dtype)
+    _assert_reconstruction(inp, lu, pivots, pivot, dtype, expected_device)
     utils.gems_assert_equal(info, ref_info)
 
 
@@ -159,12 +167,13 @@ def test_lu_with_info_singular(shape, dtype):
     _, _, ref_info = _reference_lu(
         utils.to_reference(inp, True), pivot=True, check_errors=False
     )
+    expected_device = inp.device
     lu, pivots, info = flag_gems._lu_with_info(inp, pivot=True, check_errors=False)
 
     assert (ref_info > 0).all() and (info > 0).all()
     assert torch.isfinite(lu).all()
     utils.gems_assert_equal(info, ref_info)
-    _assert_reconstruction(inp, lu, pivots, True, dtype)
+    _assert_reconstruction(inp, lu, pivots, True, dtype, expected_device)
 
 
 @pytest.mark.lu_with_info
@@ -211,8 +220,11 @@ def test_lu_with_info_check_errors_on_nonsingular_input(check_errors):
     reference = _reference_lu(
         utils.to_reference(inp, True), pivot=True, check_errors=check_errors
     )
+    expected_device = inp.device
     result = flag_gems._lu_with_info(inp, pivot=True, check_errors=check_errors)
-    _assert_reconstruction(inp, result[0], result[1], True, torch.float32)
+    _assert_reconstruction(
+        inp, result[0], result[1], True, torch.float32, expected_device
+    )
     utils.gems_assert_equal(result[2], reference[2])
 
 
