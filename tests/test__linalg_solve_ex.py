@@ -375,10 +375,17 @@ _SPECIAL_CASES = tu.selected_cases(
 )
 
 
+def _special_payload(dtype, scenario):
+    if flag_gems.vendor_name == "enflame" and dtype.is_complex:
+        # Preserve the shared real payload, casting before the same-dtype transfer.
+        return tu.make_special_input(torch.float32, scenario).cpu().to(dtype).to(flag_gems.device)
+    return tu.make_special_input(dtype, scenario)
+
+
 @pytest.mark.underscore_linalg_solve_ex
 @pytest.mark.parametrize("dtype,scenario", _SPECIAL_CASES)
 def test__linalg_solve_ex_special_dense_diagonal(dtype, scenario):
-    payload = tu.make_special_input(dtype, scenario)
+    payload = _special_payload(dtype, scenario)
     n = payload.numel()
     a = tu.make_input(dtype, (n, n), ["-1", "1"])
     torch.diagonal(a).copy_(payload)
@@ -392,7 +399,7 @@ def test__linalg_solve_ex_special_dense_diagonal(dtype, scenario):
 @pytest.mark.underscore_linalg_solve_ex
 @pytest.mark.parametrize("dtype,scenario", _SPECIAL_CASES)
 def test__linalg_solve_ex_special_rhs_column(dtype, scenario):
-    payload = tu.make_special_input(dtype, scenario)
+    payload = _special_payload(dtype, scenario)
     n = 4
     a = tu.make_input(dtype, (n, n), ["-1", "1"])
     a = a + torch.eye(n, dtype=dtype, device=flag_gems.device) * 5
@@ -421,7 +428,7 @@ _RHS_POISON_SLOTS = {
 @pytest.mark.underscore_linalg_solve_ex
 @pytest.mark.parametrize("dtype,scenario", _SPECIAL_CASES)
 def test__linalg_solve_ex_special_single_rhs_position(dtype, scenario):
-    payload = tu.make_special_input(dtype, scenario)
+    payload = _special_payload(dtype, scenario)
     n = 4
     a = tu.make_input(dtype, (n, n), ["-1", "1"])
     a = a + torch.eye(n, dtype=dtype, device=flag_gems.device) * 5
@@ -439,7 +446,7 @@ def test__linalg_solve_ex_special_single_rhs_position(dtype, scenario):
 @pytest.mark.underscore_linalg_solve_ex
 @pytest.mark.parametrize("dtype,scenario", _SPECIAL_CASES)
 def test__linalg_solve_ex_special_isolated_batch_lane(dtype, scenario):
-    payload = tu.make_special_input(dtype, scenario)
+    payload = _special_payload(dtype, scenario)
     n = payload.numel()
     a = tu.make_input(dtype, (2, n, n), ["-1", "1"])
     torch.diagonal(a, dim1=-2, dim2=-1)[1].copy_(payload)
