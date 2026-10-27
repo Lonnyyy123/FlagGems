@@ -43,8 +43,8 @@ def ref_fused_moving_avg_obs_fake_quant(
     """Native FP32 observer and quantization state transition."""
     return torch.ops.aten.fused_moving_avg_obs_fake_quant(
         input.float(),
-        torch.tensor([int(observer_on)], dtype=torch.int32, device=input.device),
-        torch.tensor([int(fake_quant_on)], dtype=torch.int32, device=input.device),
+        torch.tensor([int(observer_on)], dtype=torch.long, device=input.device),
+        torch.tensor([int(fake_quant_on)], dtype=torch.long, device=input.device),
         running_min,
         running_max,
         scale,
@@ -107,8 +107,8 @@ def test_accuracy_fused_moving_avg_obs_fake_quant(
 
     res_out = flag_gems.fused_moving_avg_obs_fake_quant(
         input_tensor,
-        torch.tensor([observer_on], dtype=torch.int32, device=flag_gems.device),
-        torch.tensor([fake_quant_on], dtype=torch.int32, device=flag_gems.device),
+        torch.tensor([observer_on], dtype=torch.long, device=flag_gems.device),
+        torch.tensor([fake_quant_on], dtype=torch.long, device=flag_gems.device),
         running_min_tri,
         running_max_tri,
         scale_tri,
