@@ -15,10 +15,10 @@
 import pytest
 import torch
 
+import flag_gems
 from flag_gems.utils import shape_utils
 
 from . import base, consts
-
 
 SHAPES = [(16, 64), (32, 128), (64, 256), (16, 16, 64), (32, 32, 128)]
 
@@ -44,6 +44,8 @@ def _case_fn(shape, dtype):
 
 
 def _build_inputs_fn(plan, dtype, device):
+    if flag_gems.vendor_name == "enflame":
+        pytest.skip("Enflame native index_select_backward requires Int32 indices")
     torch.manual_seed(0)
     shape, self_sizes, dim = plan.builder_args
     grad = torch.randn(shape, dtype=dtype, device=device)
@@ -65,6 +67,40 @@ def test_index_select_backward():
         torch_op=torch.ops.aten.index_select_backward,
         case_fn=_case_fn,
         build_inputs_fn=_build_inputs_fn,
+        dtypes=consts.FLOAT_DTYPES,
+        get_gbps=_get_gbps,
+    )
+    bench.run()
+
+
+def _case_fn_int32(shape, dtype):
+    for plan in _case_fn(shape, dtype):
+        yield base.BenchmarkCasePlan(
+            shape=plan.shape,
+            params={**plan.params, "index_dtype": "torch.int32"},
+            builder_args=plan.builder_args,
+        )
+
+
+def _build_inputs_int32_fn(plan, dtype, device):
+    torch.manual_seed(0)
+    shape, self_sizes, dim = plan.builder_args
+    grad = torch.randn(shape, dtype=dtype, device=device)
+    index = torch.randint(
+        0, self_sizes[dim], (shape[dim],), dtype=torch.int32, device=device
+    )
+    assert index.dtype == torch.int32
+    assert index.device == grad.device
+    return grad, self_sizes, dim, index
+
+
+@pytest.mark.index_select_backward
+def test_index_select_backward_int32():
+    bench = IndexSelectBackwardBenchmark(
+        op_name="index_select_backward",
+        torch_op=torch.ops.aten.index_select_backward,
+        case_fn=_case_fn_int32,
+        build_inputs_fn=_build_inputs_int32_fn,
         dtypes=consts.FLOAT_DTYPES,
         get_gbps=_get_gbps,
     )
