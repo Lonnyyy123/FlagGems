@@ -16,8 +16,9 @@ import pytest
 import torch
 
 from . import base, consts
-from .test__addmm_activation import _B03H800ReferenceMixin
 from .generated_operator_utils import OperatorBenchmark
+from .test__addmm_activation import _B03H800ReferenceMixin
+
 
 class BlasCaseBenchmark(_B03H800ReferenceMixin, base.BlasBenchmark, OperatorBenchmark):
     __init__ = OperatorBenchmark.__init__
