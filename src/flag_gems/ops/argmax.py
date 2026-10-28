@@ -257,5 +257,9 @@ def argmax(inp, dim=None, keepdim=False, *, dtype=None):
                     N,
                 )
         return out_index
-def argmax_paddle(x: 'Tensor', dim: 'int | None' = None, keepdim: 'bool' = False, dtype: 'DTypeLike' = 'int64', name: 'str | None' = None) -> 'Tensor':
-    return argmax(x, dim=dim, keepdim=keepdim, dtype=dtype)
+def argmax_paddle(x: 'Tensor', axis: 'int | None' = None, keepdim: 'bool' = False, dtype: 'DTypeLike' = 'int64', name: 'str | None' = None, *, dim: 'int | None' = None) -> 'Tensor':
+    # paddle's _C_ops.argmax passes the reduced axis as `axis`, while the torch
+    # compatibility layer passes it as `dim`; accept either spelling.
+    if axis is None:
+        axis = dim
+    return argmax(x, dim=axis, keepdim=keepdim, dtype=dtype)

@@ -149,7 +149,11 @@ def amax(inp, dim=None, keepdim=False):
             out = out.squeeze(dim=dim)
         return out
 
-def amax_paddle(x: 'Tensor', dim: 'int | Sequence[int] | None' = None, keepdim: 'bool' = False,   name: 'str | None' = None, *, out: 'Tensor | None' = None) -> 'Tensor':
-    if isinstance(dim, int):
-        dim = [dim]
-    return amax(x, dim, keepdim)
+def amax_paddle(x: 'Tensor', axis: 'int | Sequence[int] | None' = None, keepdim: 'bool' = False,   name: 'str | None' = None, *, dim: 'int | Sequence[int] | None' = None, out: 'Tensor | None' = None) -> 'Tensor':
+    # paddle's _C_ops.amax passes the reduced axes as `axis`, while the torch
+    # compatibility layer passes them as `dim`; accept either spelling.
+    if axis is None:
+        axis = dim
+    if isinstance(axis, int):
+        axis = [axis]
+    return amax(x, axis, keepdim)

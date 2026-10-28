@@ -381,6 +381,12 @@ class Benchmark:
                 metric = BenchmarkMetrics()
                 try:
                     args, kwargs = self.unpack_to_args_kwargs(input,self.is_backward)
+                    # The previous iteration's inputs stay referenced by the suspended
+                    # input generator, so the empty_cache() in `finally` cannot return
+                    # their blocks. Release here, once the new inputs exist: otherwise
+                    # auto_growth keeps one chunk per past shape and the large BLAS
+                    # shapes OOM on an idle card (77GB reserved vs 8GB actually in use).
+                    torch.cuda.empty_cache()
                     metric.shape_detail = self.record_shapes(*args, **kwargs)
                     if "latency_base" in self.to_bench_metrics:
                         metric.latency_base = self.get_latency(

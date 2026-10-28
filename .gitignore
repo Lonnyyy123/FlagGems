@@ -39,3 +39,4 @@ tests/*.json
 # Crash dumps and local benchmark artifacts
 core.*
 /result.json
+/result_*
