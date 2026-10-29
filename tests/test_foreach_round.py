@@ -117,7 +117,7 @@ def test_foreach_round_mixed_shapes_and_empty_tensor():
 
 @pytest.mark.foreach_round
 def test_foreach_round_integer_promotion():
-    if flag_gems.vendor_name == "kunlunxin" and not utils.TO_CPU:
+    if flag_gems.vendor_name in ("kunlunxin", "mthreads") and not utils.TO_CPU:
         pytest.skip(
             "backend native foreach does not support the integer reference contract"
         )
