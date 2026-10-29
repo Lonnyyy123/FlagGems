@@ -49,7 +49,7 @@ def test_replication_pad2d_out(shape, padding, dtype):
     out = torch.empty(out_shape, dtype=dtype, device=flag_gems.device)
 
     ref_inp = utils.to_reference(inp, True)
-    ref_out = utils.to_reference(out, True)
+    ref_out = utils.to_reference(out, True).clone()
 
     torch.ops.aten.replication_pad2d.out(ref_inp, padding, out=ref_out)
 
