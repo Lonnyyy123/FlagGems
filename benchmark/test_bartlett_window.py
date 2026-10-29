@@ -19,12 +19,14 @@ def _case_fn(shape, dtype):
 
 def _build_inputs_fn(plan, dtype, device):
     (window_length,) = plan.builder_args
-    return (), {
-        "window_length": window_length,
-        "periodic": plan.params["periodic"],
-        "dtype": dtype,
-        "device": device,
-    }
+    return (
+        {
+            "window_length": window_length,
+            "periodic": plan.params["periodic"],
+            "dtype": dtype,
+            "device": device,
+        },
+    )
 
 
 @pytest.mark.bartlett_window
