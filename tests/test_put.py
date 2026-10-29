@@ -161,8 +161,10 @@ def _put_assert_metadata(actual, expected, dtype):
 
 def _put_assert_close(actual, expected, dtype, **kwargs):
     _put_assert_metadata(actual, expected, dtype)
-    if flag_gems.vendor_name == "enflame" or (
-        flag_gems.vendor_name in ("ascend", "kunlunxin") and actual.is_complex()
+    if (
+        (flag_gems.vendor_name == "ascend" and expected.device.type == "cpu")
+        or flag_gems.vendor_name == "enflame"
+        or (flag_gems.vendor_name in ("ascend", "kunlunxin") and actual.is_complex())
     ):
         actual, expected = actual.cpu(), expected.cpu()
     utils.gems_assert_close(actual, expected, dtype, **kwargs)
@@ -283,6 +285,10 @@ def test_put_negative_index(shape, dtype):
     ref_index = utils.to_reference(index, False)
     ref_source = _reference(source)
 
+    if flag_gems.vendor_name == "ascend":
+        ref_inp, ref_index, ref_source = (
+            value.cpu() for value in (ref_inp, ref_index, ref_source)
+        )
     ref_out = torch.put(ref_inp, ref_index, ref_source)
     res_out = _gems_put(inp, index, source)
 
@@ -305,12 +311,20 @@ def test_put_index_bounds(numel, index_at, accumulate):
     index = torch.tensor([value], dtype=torch.int64, device=flag_gems.device)
     source = gen_source(1, dtype, flag_gems.device)
 
-    ref_out = torch.put(
-        _reference(inp),
-        utils.to_reference(index, False),
-        _reference(source),
-        accumulate=accumulate,
-    )
+    if flag_gems.vendor_name == "ascend" and index_at in ("neg_first", "neg_last"):
+        ref_out = torch.put(
+            _reference(inp).cpu(),
+            utils.to_reference(index, False).cpu(),
+            _reference(source).cpu(),
+            accumulate=accumulate,
+        )
+    else:
+        ref_out = torch.put(
+            _reference(inp),
+            utils.to_reference(index, False),
+            _reference(source),
+            accumulate=accumulate,
+        )
     res_out = _gems_put(inp, index, source, accumulate=accumulate)
 
     _put_assert_close(res_out, ref_out, dtype)

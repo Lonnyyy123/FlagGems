@@ -69,8 +69,10 @@ def _put_assert_close(actual, expected, dtype, **kwargs):
     assert actual.device == target
     assert actual.dtype == dtype
     assert actual.shape == expected.shape
-    if flag_gems.vendor_name == "enflame" or (
-        flag_gems.vendor_name in ("ascend", "kunlunxin") and actual.is_complex()
+    if (
+        (flag_gems.vendor_name == "ascend" and expected.device.type == "cpu")
+        or flag_gems.vendor_name == "enflame"
+        or (flag_gems.vendor_name in ("ascend", "kunlunxin") and actual.is_complex())
     ):
         actual, expected = actual.cpu(), expected.cpu()
     utils.gems_assert_close(actual, expected, dtype, **kwargs)
@@ -157,6 +159,10 @@ def test_put__negative_index(shape, dtype):
     ref_index = utils.to_reference(index)
     ref_source = utils.to_reference(source, True)
 
+    if flag_gems.vendor_name == "ascend":
+        ref_inp, ref_index, ref_source = (
+            value.cpu() for value in (ref_inp, ref_index, ref_source)
+        )
     ref_inp.put_(ref_index, ref_source)
     flag_gems.put_(inp, index, source)
 
@@ -844,7 +850,13 @@ def test_put__index_boundary_valid(boundary):
     index = torch.tensor([boundary], dtype=torch.int64, device=flag_gems.device)
     source = torch.ones(1, dtype=torch.float32, device=flag_gems.device)
 
-    ref_inp.put_(utils.to_reference(index), utils.to_reference(source, True))
+    if flag_gems.vendor_name == "ascend" and boundary < 0:
+        ref_inp = ref_inp.cpu()
+        ref_inp.put_(
+            utils.to_reference(index).cpu(), utils.to_reference(source, True).cpu()
+        )
+    else:
+        ref_inp.put_(utils.to_reference(index), utils.to_reference(source, True))
     flag_gems.put_(inp, index, source)
 
     _assert_put_equal(inp, ref_inp, torch.float32)
