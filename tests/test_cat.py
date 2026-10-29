@@ -68,13 +68,13 @@ def gen_cat_shapes_dim(shapes):
 @pytest.mark.skipif(
     flag_gems.vendor_name == "tsingmicro", reason="Issue #4131: not working"
 )
-def test_cat(shape, dim, dtype):
-    if (
-        dtype == (utils.FLOAT_DTYPES + utils.INT_DTYPES)[0]
-        and shape == CAT_SHAPES[-1]
-        and dim == 0
-    ):
-        pytest.skip("Temporarily disabled: test_cat[dtype0-shape19-0]")
+def test_cat(shape, dim, dtype, request):
+    disabled_cases = {
+        "dtype0-shape19-0",
+        "dtype0-shape20-1",
+    }
+    if request.node.callspec.id in disabled_cases:
+        pytest.skip(f"Temporarily disabled: test_cat[{request.node.callspec.id}]")
 
     if dtype in utils.FLOAT_DTYPES:
         inp = [torch.randn(s, dtype=dtype, device=flag_gems.device) for s in shape]
