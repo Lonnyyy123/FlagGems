@@ -122,16 +122,24 @@ def _unpack_no_pivot(lu):
 
 
 def _assert_reconstruction(inp, lu, pivots, pivot, dtype):
-    k = min(inp.shape[-2:])
-    if pivot:
-        p, lower, upper = torch.lu_unpack(lu, pivots)
-        reconstructed = p @ lower @ upper
-    else:
-        lower, upper = _unpack_no_pivot(lu)
-        reconstructed = lower @ upper
-    utils.gems_assert_close(
-        reconstructed, utils.to_reference(inp, True), dtype, reduce_dim=k
-    )
+    previous = torch.backends.cuda.matmul.allow_tf32
+    try:
+        if VENDOR == "nvidia":
+            # Test-side reconstruction must use full F32, not optional TF32.
+            torch.backends.cuda.matmul.allow_tf32 = False
+        k = min(inp.shape[-2:])
+        if pivot:
+            p, lower, upper = torch.lu_unpack(lu, pivots)
+            reconstructed = p @ lower @ upper
+        else:
+            lower, upper = _unpack_no_pivot(lu)
+            reconstructed = lower @ upper
+        utils.gems_assert_close(
+            reconstructed, utils.to_reference(inp, True), dtype, reduce_dim=k
+        )
+    finally:
+        if VENDOR == "nvidia":
+            torch.backends.cuda.matmul.allow_tf32 = previous
 
 
 @pytest.mark.lu_with_info
