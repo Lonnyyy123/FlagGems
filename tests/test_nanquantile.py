@@ -64,7 +64,8 @@ def _assert_close(result, reference, dtype, reduction_size):
 def test_nanquantile_tensor(dtype, interpolation, dim, keepdim):
     inp = _input((7, 33), dtype).T
     q = torch.tensor([0.0, 0.2, 0.5, 0.8, 1.0], dtype=dtype, device=inp.device)
-    ref_inp, ref_q = utils.to_reference(inp, True), utils.to_reference(q, True)
+    # Promoting q can move an exact interpolation rank across a ceil boundary.
+    ref_inp, ref_q = utils.to_reference(inp, False), utils.to_reference(q, False)
     reference = torch.ops.aten.nanquantile.default(
         ref_inp, ref_q, dim, keepdim, interpolation=interpolation
     )
@@ -220,7 +221,7 @@ def test_nanquantile_maximum_reduction_one_valid(valid_count):
         inp[0] = 13.0
     q = torch.tensor([0.0, 0.5, 1.0], device=inp.device)
     reference = torch.nanquantile(
-        utils.to_reference(inp, True), utils.to_reference(q, True)
+        utils.to_reference(inp, False), utils.to_reference(q, False)
     )
     result = flag_gems.nanquantile(inp, q)
     utils.gems_assert_equal(result, reference, equal_nan=True)
