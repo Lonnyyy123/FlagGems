@@ -113,9 +113,9 @@ DEFAULT_DESCRIPTORS = [
 
 
 _H800_ARTIFACT_SHA256 = (
-    "438cb6ee59d1a50439c0b006d27e71a8989b13ce54118cd72e139de5d1fc7270"
+    "17929cff2a1c2cd2a45c01385d662e4dbd4f0cac9436f1bf0f6f81edf927d79a"
 )
-_H800_OPS_COMMIT = "642d6ea974791cf6e75503e9d0b186542e6c352a"
+_H800_OPS_COMMIT = "eb2d2246e1a8ed99a85e2106363e844e021b1e60"
 
 
 @dataclass
@@ -241,7 +241,8 @@ def _h800_input_config(args, kwargs):
     for tensor, shape in ((a, a_shape), (b, b_shape)):
         if (
             tuple(tensor.shape) != shape
-            or tensor.dtype not in (torch.float32, torch.complex64)
+            or tensor.dtype
+            not in (torch.float32, torch.complex64, torch.float64, torch.complex128)
             or tensor.dtype != a.dtype
             or tensor.requires_grad
             or tensor.storage_offset() != 0
