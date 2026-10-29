@@ -28,7 +28,7 @@ from flag_gems.utils.limits import get_dtype_min
 logger = logging.getLogger(__name__)
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def argmax_kernel_1(
     inp,
@@ -51,7 +51,7 @@ def argmax_kernel_1(
     tl.store(max_index_ptr, max_index)
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def argmax_kernel_2(mid_value, mid_index, out, mid_size, BLOCK_MID: tl.constexpr):
     offset = tl.arange(0, BLOCK_MID)
@@ -65,7 +65,7 @@ def argmax_kernel_2(mid_value, mid_index, out, mid_size, BLOCK_MID: tl.constexpr
     tl.store(out, out_val)
 
 
-@libentry()
+#@libentry()
 @triton.heuristics(runtime.get_heuristic_config("argmax_non_inner"))
 @triton.jit
 def argmax_kernel_non_inner(
@@ -126,7 +126,7 @@ def argmax_kernel_non_inner(
         tl.store(out_index_ptrs, argmax_values, mask=mask1)
 
 
-@libentry()
+#@libentry()
 @triton.heuristics(runtime.get_heuristic_config("argmax_inner"))
 @triton.jit
 def argmax_kernel_inner(
@@ -192,6 +192,9 @@ def argmax_kernel_inner(
         tl.store(out_index_ptrs, argmax_values)
 
 
+import trident
+
+@trident.jit
 def argmax(inp, dim=None, keepdim=False, *, dtype=None):
     logger.debug("GEMS ARGMAX")
     if dim is None:

@@ -257,6 +257,9 @@ def _cat_build_working_list(
     return "multi", (A, dim, out_shape, dtype, A[0].device)
 
 
+import trident
+
+@trident.jit
 def cat_out(
     A: Union[Tuple[torch.Tensor, ...], List[torch.Tensor]],
     dim: int = 0,
@@ -316,6 +319,7 @@ def cat_out(
     return out
 
 
+@trident.jit
 def cat(
     A: Union[Tuple[torch.Tensor, ...], List[torch.Tensor]], dim: int = 0
 ) -> torch.Tensor:

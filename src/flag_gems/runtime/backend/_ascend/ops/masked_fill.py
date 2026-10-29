@@ -96,6 +96,9 @@ def masked_fill_kernel_self(
         tl.store(inp + offsets, result, mask=mask)
 
 
+import trident
+
+@trident.jit
 def masked_fill(inp, mask, value):
     logger.debug("GEMS_ASCEND MASKED_FILL")
     assert (
@@ -131,6 +134,7 @@ def masked_fill(inp, mask, value):
     return out
 
 
+@trident.jit
 def masked_fill_(inp, mask, value):
     logger.debug("GEMS_ASCEND MASKED_FILL_")
     assert (

@@ -125,7 +125,7 @@ def _prune_configs_by_ub(configs, named_args, **kwargs):
     return pruned or configs
 
 
-@libentry()
+#@libentry()
 @libtuner(
     configs=_TUNED_CONFIGS,
     key=["M", "N", "K"],
@@ -195,7 +195,7 @@ def linear_kernel(
     )
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def linear_gemv_kernel(
     input_ptr,
@@ -254,6 +254,9 @@ def linear_gemv_kernel(
     tl.store(output_ptr + offs_n, acc.to(output_ptr.dtype.element_ty), mask=n_mask)
 
 
+import trident
+
+@trident.jit
 def linear(input, weight, bias=None):
     """
     Applies a linear transformation to the incoming data: y = xA^T + b

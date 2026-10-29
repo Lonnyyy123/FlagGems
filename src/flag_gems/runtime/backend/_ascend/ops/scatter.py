@@ -94,6 +94,9 @@ def scatter_reduce_multiply_no_atomic(inp, dim, index, src):
     return out_cpu.to(inp.device)
 
 
+import trident
+
+@trident.jit
 def scatter(inp, dim, index, src, reduce=None):
     logger.debug("GEMS_ASCEND SCATTER")
     if reduce == "add":
@@ -103,6 +106,7 @@ def scatter(inp, dim, index, src, reduce=None):
     return _scatter(inp, dim, index, src, reduce)
 
 
+@trident.jit
 def scatter_(inp, dim, index, src, reduce=None):
     logger.debug("GEMS_ASCEND SCATTER_")
     if reduce == "add":

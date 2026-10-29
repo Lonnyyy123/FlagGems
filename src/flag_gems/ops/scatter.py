@@ -341,6 +341,9 @@ class ScatterFunction:
 _scatter_func = ScatterFunction()
 
 
+import trident
+
+@trident.jit
 def scatter(inp, dim, index, src, reduce=None):
     logger.debug("GEMS SCATTER")
     out = inp.clone()
@@ -376,6 +379,7 @@ def scatter(inp, dim, index, src, reduce=None):
     return out
 
 
+@trident.jit
 def scatter_(inp, dim, index, src, reduce=None):
     logger.debug("GEMS SCATTER_")
     out = inp

@@ -55,6 +55,9 @@ add_func_scalar_tensor.register_complex(
 )
 
 
+import trident
+
+#@trident.jit
 def add(A, B, *, alpha=1):
     logger.debug("GEMS ADD")
     A_is_complex = (isinstance(A, torch.Tensor) and A.is_complex()) or isinstance(
@@ -113,6 +116,7 @@ def add(A, B, *, alpha=1):
         return torch.tensor(A + B * alpha)
 
 
+#@trident.jit
 def add_(A, B, *, alpha=1):
     logger.debug("GEMS ADD_")
     if isinstance(A, torch.Tensor) and isinstance(B, torch.Tensor):

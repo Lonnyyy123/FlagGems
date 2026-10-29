@@ -26,7 +26,7 @@ from flag_gems.utils import triton_lang_extension as ext
 logger = logging.getLogger(__name__)
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def embedding_kernel(
     out_ptr,  # pointer to the output
@@ -48,7 +48,7 @@ def embedding_kernel(
     tl.store(out_ptr + cols, embedding_weight, mask)
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def indice_freq_kernel(
     indices_freq,
@@ -66,7 +66,7 @@ def indice_freq_kernel(
             tl.atomic_add(indices_freq + idx, 1)
 
 
-@libentry()
+#@libentry()
 @triton.jit(do_not_specialize=["padding_idx"])
 def embedding_backward_kernel(
     grad_in,  # pointer to the gradient input
@@ -100,7 +100,7 @@ def embedding_backward_kernel(
             tl.atomic_add(grad_in + cols, embedding_grad, mask=mask)
 
 
-@libentry()
+#@libentry()
 @triton.jit(do_not_specialize=["n_rows"])
 def embedding_grad_scale_kernel(
     grad_out,
@@ -221,5 +221,8 @@ class Embedding(torch.autograd.Function):
         )
 
 
+import trident
+
+@trident.jit
 def embedding(weight, indices, padding_idx=-1, scale_grad_by_freq=False, sparse=False):
     return Embedding.apply(weight, indices, padding_idx, scale_grad_by_freq, sparse)
