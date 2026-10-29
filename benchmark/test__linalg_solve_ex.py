@@ -112,7 +112,9 @@ DEFAULT_DESCRIPTORS = [
 ]
 
 
-_H800_ARTIFACT_SHA256 = None  # Filled only after a real reviewed H800 collection.
+_H800_ARTIFACT_SHA256 = (
+    "438cb6ee59d1a50439c0b006d27e71a8989b13ce54118cd72e139de5d1fc7270"
+)
 _H800_OPS_COMMIT = "642d6ea974791cf6e75503e9d0b186542e6c352a"
 
 
@@ -124,10 +126,6 @@ class _SolveMetrics(base.BenchmarkMetrics):
 class _HiddenSolveH800Baseline:
     @cached_property
     def _h800_baseline(self):
-        if _H800_ARTIFACT_SHA256 is None:
-            raise ValueError(
-                "Hidden four-output solve H800 baseline has not been collected"
-            )
         path = Path(os.environ["FLAGGEMS_HIDDEN_SOLVE_H800_BASELINE"]).resolve(
             strict=True
         )
@@ -156,6 +154,10 @@ class _HiddenSolveH800Baseline:
             "environment": environment,
             "input_identity": "Exact original geometry, flags, dtype and recipe; random payloads differ",
             "ratio": "raw H800 latency / locally timed candidate; no peak normalization",
+            "environment_qualification": (
+                "Functional latency collection with sharing allowed; "
+                "no isolated performance claim"
+            ),
         }
 
     def get_latency(self, op, *args, **kwargs):
