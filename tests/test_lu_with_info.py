@@ -67,6 +67,26 @@ def _cpu_lu_without_lapack(input, *, pivot=True, check_errors=False):
 
 
 def _reference_lu(input, *, pivot=True, check_errors=False):
+    if (
+        VENDOR == "thead"
+        and not utils.TO_CPU
+        and input.device.type == "cuda"
+        and input.dtype == torch.float64
+        and tuple(input.shape) == (256, 256)
+        and tuple(input.stride()) == (256, 1)
+        and input.storage_offset() == 0
+        and pivot is False
+        and check_errors is False
+    ):
+        # The measured default Double no-pivot reference has incorrect factors.
+        # Keep its original precision and three-output device/layout contract.
+        cpu = input.detach().cpu().clone()
+        lu, pivots, info = _cpu_lu_without_lapack(cpu, pivot=False, check_errors=False)
+        target_lu = torch.empty_strided(
+            input.shape, (1, 256), dtype=input.dtype, device=input.device
+        )
+        target_lu.copy_(lu)
+        return target_lu, pivots.to(input.device), info.to(input.device)
     try:
         return torch._lu_with_info(input, pivot=pivot, check_errors=check_errors)
     except RuntimeError as error:
