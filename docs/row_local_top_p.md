@@ -1,9 +1,9 @@
 # Row-resident top-p filtering on BI-V150
 
-The `v535` branch ports this operator onto the official `v5.3.5` tag
+The `v5.3.5` branch ports this operator onto the official `v5.3.5` tag
 (`a7620cc`). The GPU tests and timings described below were measured on the
 earlier BI-V150 image baseline (`4df52d9`), not on this migrated branch.
-The kernel and test source are unchanged; GPU validation on `v535` is pending.
+The kernel and test source are unchanged; GPU validation on `v5.3.5` is pending.
 
 `flag_gems.row_local_top_p_(logits, p)` mutates independent FP32 logit rows.
 It selects a nucleus; it does not generate random numbers or sample token IDs.
