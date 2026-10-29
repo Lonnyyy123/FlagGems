@@ -68,14 +68,7 @@ def gen_cat_shapes_dim(shapes):
 @pytest.mark.skipif(
     flag_gems.vendor_name == "tsingmicro", reason="Issue #4131: not working"
 )
-def test_cat(shape, dim, dtype, request):
-    disabled_cases = {
-        "dtype0-shape19-0",
-        "dtype0-shape20-1",
-    }
-    if request.node.callspec.id in disabled_cases:
-        pytest.skip(f"Temporarily disabled: test_cat[{request.node.callspec.id}]")
-
+def test_cat(shape, dim, dtype):
     if dtype in utils.FLOAT_DTYPES:
         inp = [torch.randn(s, dtype=dtype, device=flag_gems.device) for s in shape]
     else:
@@ -115,6 +108,26 @@ def test_cat_empty_tensor(shape, dim, dtype):
 
     res_out = flag_gems.cat(inp, dim)
 
+    utils.gems_assert_equal(res_out, ref_out)
+
+
+@pytest.mark.cat
+@pytest.mark.parametrize("empty_first", [False, True])
+def test_cat_promotes_mixed_input_dtypes(empty_first):
+    inp = [
+        torch.tensor([1, 2], dtype=torch.int32, device=flag_gems.device),
+        torch.tensor([1.5, 2.5], dtype=torch.float32, device=flag_gems.device),
+    ]
+    if empty_first:
+        inp = [
+            torch.empty((0,), dtype=torch.float32, device=flag_gems.device),
+            inp[0],
+        ]
+
+    ref_out = torch.cat([utils.to_reference(t) for t in inp])
+    res_out = flag_gems.cat(inp)
+
+    assert res_out.dtype == ref_out.dtype
     utils.gems_assert_equal(res_out, ref_out)
 
 
