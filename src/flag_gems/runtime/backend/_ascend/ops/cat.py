@@ -9,7 +9,7 @@ from flag_gems.runtime import torch_device_fn
 from flag_gems.utils import libentry
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def _cat_copy_flat_kernel(
     input_ptr,
@@ -33,7 +33,7 @@ def _cat_copy_flat_kernel(
     )
 
 
-@libentry()
+#@libentry()
 @triton.jit
 def _cat_copy_strided_kernel(
     input_ptr,
@@ -171,6 +171,9 @@ def _cat_fill_triton(out, A, dim):
             cat_offset += input_cat_size
 
 
+import trident
+
+@trident.jit
 def cat(
     A: Union[
         Tuple[torch.Tensor, ...],
@@ -201,6 +204,7 @@ def cat(
     return out
 
 
+@trident.jit
 def cat_out(
     A: Union[
         Tuple[torch.Tensor, ...],
