@@ -692,7 +692,11 @@ def test_put_non_contiguous(shape, dtype):
     res_out = _gems_put(inp, index, source)
 
     _put_assert_close(res_out, ref_out, dtype)
-    assert res_out.stride() == ref_out.stride()
+    assert res_out.stride() == (
+        inp.stride()
+        if flag_gems.vendor_name == "kunlunxin" and utils.TO_CPU
+        else ref_out.stride()
+    )
 
 
 @pytest.mark.put
@@ -720,7 +724,11 @@ def test_put_non_contiguous_high_rank(shape, perm, accumulate):
     res_out = _gems_put(inp, index, source, accumulate=accumulate)
 
     assert_put_close(res_out, ref_out, dtype, accumulate)
-    assert res_out.stride() == ref_out.stride()
+    assert res_out.stride() == (
+        inp.stride()
+        if flag_gems.vendor_name == "kunlunxin" and utils.TO_CPU
+        else ref_out.stride()
+    )
 
 
 @pytest.mark.put
