@@ -20,9 +20,10 @@ from dataclasses import asdict, dataclass
 from functools import cached_property
 from pathlib import Path
 
-import flag_gems
 import pytest
 import torch
+
+import flag_gems
 
 from . import base
 from .generated_operator_utils import OperatorBenchmark
