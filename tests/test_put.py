@@ -179,7 +179,7 @@ def _put_assert_exact(actual, expected, dtype):
 def _put_same_values(actual, expected):
     _put_assert_metadata(actual, expected, expected.dtype)
     if flag_gems.vendor_name == "enflame" or (
-        flag_gems.vendor_name == "kunlunxin" and actual.is_complex()
+        flag_gems.vendor_name in ("ascend", "kunlunxin") and actual.is_complex()
     ):
         actual, expected = actual.cpu(), expected.cpu()
     return torch.equal(actual, expected)
