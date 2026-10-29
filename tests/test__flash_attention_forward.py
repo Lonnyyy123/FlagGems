@@ -322,7 +322,10 @@ def test__flash_attention_forward(dtype, shape, is_causal, scale_mode):
 @pytest.mark.skipif(
     flag_gems.vendor_name
     in {"hygon", "metax", "mthreads", "kunlunxin", "cambricon", "tsingmicro"},
-    reason="Existing FlashAttention sliding-window backend limitations: issues #2810, #2811, #2812, #2814, #5254, #4083",
+    reason=(
+        "Existing FlashAttention sliding-window backend limitations: "
+        "issues #2810, #2811, #2812, #2814, #5254, #4083"
+    ),
 )
 @pytest.mark.parametrize(
     "window_size_left,window_size_right", [(8, 0), (8, 8), (None, 4)]
