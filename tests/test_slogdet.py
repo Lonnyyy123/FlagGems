@@ -60,7 +60,8 @@ def _reference_slogdet(inp):
         and inp.numel()
     ):
         pytest.skip(
-            "Iluvatar native double slogdet computes incorrect values or lacks the batched solver; CPU reference remains covered"
+            "Iluvatar native double slogdet computes incorrect values or lacks "
+            "the batched solver; CPU reference remains covered"
         )
     return torch.linalg.slogdet(inp)
 
