@@ -17,9 +17,8 @@ import logging
 import torch
 import triton
 import triton.language as tl
-
 from flag_gems.ops.topk import _get_finfo_val, _get_iinfo_val, argsort
-from flag_gems.runtime import torch_device_fn
+from flag_gems.runtime import device, torch_device_fn
 from flag_gems.utils import libentry
 
 logger = logging.getLogger(__name__)
@@ -156,6 +155,49 @@ def compute_global_hist_kernel(
 
 
 @triton.jit
+def _metax_compute_global_hist_kernel(
+    arr_ptr,
+    out_ptr,
+    num_passes,
+    m,
+    n,
+    tiles_n_per_cta,
+    TILE_N: tl.constexpr,
+    TILE_R: tl.constexpr,
+    num_bits_per_pass: tl.constexpr,
+    descending: tl.constexpr,
+):
+    # Count digits directly rather than expanding (bins, elements) int64
+    # accumulators. Each CTA counts at most TILE_N * tiles_n_per_cta items.
+    pid = tl.program_id(0)
+    pid_n = pid // m
+    pid_m = pid % m
+    r: tl.constexpr = 2**num_bits_per_pass
+    bfe_mask: tl.constexpr = r - 1
+    cta_n_start = TILE_N * tiles_n_per_cta * pid_n
+    cta_n_end = tl.minimum(cta_n_start + TILE_N * tiles_n_per_cta, n)
+    bins = tl.arange(0, r)
+    for p in range(0, num_passes):
+        counts = tl.zeros((r,), dtype=tl.int32)
+        for n_start in range(cta_n_start, cta_n_end, TILE_N):
+            offsets = n_start + tl.arange(0, TILE_N)
+            mask = offsets < cta_n_end
+            arr = tl.load(arr_ptr + pid_m * n + offsets, mask=mask, other=0)
+            ordered = convert_to_uint_preverse_order(arr, descending)
+            keys = (ordered >> (p * num_bits_per_pass)) & bfe_mask
+            # Route padding to bin zero, then remove it explicitly. This does
+            # not depend on histogram behavior for out-of-range bin indices.
+            counts += tl.histogram(tl.where(mask, keys, 0).to(tl.int32), r)
+            padding = tl.sum((~mask).to(tl.int32), axis=0)
+            counts -= tl.where(bins == 0, padding, 0)
+        tl.atomic_add(
+            out_ptr + pid_m * num_passes * r + p * r + bins,
+            counts,
+            sem="relaxed",
+        )
+
+
+@triton.jit
 def sweep(
     arr_ptr,
     associate_arr_ptr,  # inputs: (key & value)
@@ -255,7 +297,7 @@ def sweep(
             tl.store(associate_out_ptr + pid_m * N + pos, associate_arr, mask=matches)
 
 
-def radix_sort(arr, k_bits=8, descending=False):
+def radix_sort(arr, k_bits=8, descending=False, *, _return_int32_indices=False):
     n = arr.shape[-1]
     m = arr.numel() // n
     assert n < (1 << 30), "we have not implemented 2**30 per launch"
@@ -277,7 +319,12 @@ def radix_sort(arr, k_bits=8, descending=False):
         global_hist = torch.zeros(
             (m, n_passes, num_bins), device=arr.device, dtype=torch.int32
         )
-        compute_global_hist_kernel[grid_for_global_hist](
+        hist_kernel = (
+            _metax_compute_global_hist_kernel
+            if device.vendor_name == "metax"
+            else compute_global_hist_kernel
+        )
+        hist_kernel[grid_for_global_hist](
             arr,
             global_hist,
             n_passes,
@@ -292,19 +339,43 @@ def radix_sort(arr, k_bits=8, descending=False):
         ex_cumsum_bins = torch.cumsum(global_hist, -1) - global_hist
         ex_cumsum_bins = ex_cumsum_bins.to(torch.uint32)
 
-        # sort
-        arr_in = torch.clone(arr)
+        # Specialize only the measured FP32 sampling shape. The first pass can
+        # read the caller's contiguous input without copying it, provided later
+        # passes ping-pong between two owned buffers and never write the input.
+        metax_fp32_sampling = (
+            device.vendor_name == "metax"
+            and dtype == torch.float32
+            and k_bits == 4
+            and n == 130560
+            and 1 <= m <= 64
+            and arr.is_contiguous()
+        )
+        borrow_input = metax_fp32_sampling
+        direct_indices = metax_fp32_sampling and not _return_int32_indices
+        arr_in = arr if borrow_input else torch.clone(arr)
+        # n < 2**30 above, so all intermediate positions fit signed int32.
+        # Preserve the public int64 index result at the return boundary.
+        index_dtype = torch.int32 if device.vendor_name == "metax" else torch.int64
         indices_in = (
-            torch.arange(0, n, dtype=torch.int64, device=arr_in.device)
+            torch.arange(0, n, dtype=index_dtype, device=arr_in.device)
             .broadcast_to(arr.shape)
             .contiguous()
         )
         arr_out = torch.empty_like(arr)
+        arr_spare = torch.empty_like(arr) if borrow_input else None
         indices_out = torch.empty_like(indices_in)
+        # The last sweep stores indices directly as int64. Earlier sweeps keep
+        # int32 traffic; no standalone conversion/readback is needed afterward.
+        final_indices = (
+            torch.empty_like(indices_in, dtype=torch.int64) if direct_indices else None
+        )
 
+        # Compose the independently screened r8 sweep with the int32 consumer.
+        use_sweep_config = (device.vendor_name == "metax" and arr.dtype == torch.float32
+                            and k_bits == 4 and n == 130560 and 1 <= m <= 64)
         TILE_R = 8
         grid_r = triton.cdiv(num_bins, TILE_R)
-        TILE_N = 2048
+        TILE_N = 1024 if use_sweep_config else 2048
         grid_n = triton.cdiv(n, TILE_N)
         grid_for_sweep = (m * grid_n, grid_r)
 
@@ -313,13 +384,20 @@ def radix_sort(arr, k_bits=8, descending=False):
         )
 
         for i in range(0, n_passes):
+            if borrow_input and i == 1:
+                # After pass zero arr_out points at the borrowed input. Replace
+                # it before the next launch so the input remains read-only.
+                arr_out = arr_spare
+            pass_indices_out = (
+                final_indices if direct_indices and i == n_passes - 1 else indices_out
+            )
             bit_offset = i * k_bits
             status.zero_()
             sweep[grid_for_sweep](
                 arr_in,
                 indices_in,
                 arr_out,
-                indices_out,
+                pass_indices_out,
                 ex_cumsum_bins,
                 status,
                 n_passes,
@@ -332,12 +410,15 @@ def radix_sort(arr, k_bits=8, descending=False):
                 TILE_R,
                 k_bits,
                 descending,
+                **({"num_warps": 4} if use_sweep_config else {}),
             )
             # print(f"< sorted last {bit_offset + k_bits:>2d} bits: {arr_out}")
             arr_in, arr_out = arr_out, arr_in
-            indices_in, indices_out = indices_out, indices_in
+            indices_in, indices_out = pass_indices_out, indices_in
 
-    return arr_in, indices_in
+    if direct_indices or (_return_int32_indices and device.vendor_name == "metax"):
+        return arr_in, indices_in
+    return arr_in, indices_in.to(torch.int64)
 
 
 @libentry()
